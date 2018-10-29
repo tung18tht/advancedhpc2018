@@ -30,15 +30,16 @@ int main(int argc, char **argv) {
 
     printf("Starting labwork %d\n", lwNum);
     Timer timer;
-    timer.start();
     switch (lwNum) {
         case 1:
+            timer.start();
             labwork.labwork1_CPU();
-            labwork.saveOutputImage("labwork2-cpu-out.jpg");
             printf("labwork 1 CPU ellapsed %.1fms\n", lwNum, timer.getElapsedTimeInMilliSec());
+            labwork.saveOutputImage("labwork1-cpu-out.jpg");
             timer.start();
             labwork.labwork1_OpenMP();
-            labwork.saveOutputImage("labwork2-openmp-out.jpg");
+            printf("labwork 1 OpenMP ellapsed %.1fms\n", lwNum, timer.getElapsedTimeInMilliSec());
+            labwork.saveOutputImage("labwork1-openmp-out.jpg");
             break;
         case 2:
             labwork.labwork2_GPU();
@@ -78,7 +79,6 @@ int main(int argc, char **argv) {
             labwork.saveOutputImage("labwork10-gpu-out.jpg");
             break;
     }
-    printf("labwork %d ellapsed %.1fms\n", lwNum, timer.getElapsedTimeInMilliSec());
 }
 
 void Labwork::loadInputImage(std::string inputFileName) {
