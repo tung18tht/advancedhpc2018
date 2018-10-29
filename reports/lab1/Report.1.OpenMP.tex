@@ -1,0 +1,58 @@
+\documentclass[12pt]{article}
+
+\usepackage[a4paper, margin=1in]{geometry}
+
+\usepackage{listings}
+\usepackage{color}
+
+\definecolor{codegreen}{rgb}{0,0.6,0}
+\definecolor{codegray}{rgb}{0.5,0.5,0.5}
+\definecolor{codepurple}{rgb}{0.58,0,0.82}
+\definecolor{backcolour}{rgb}{0.95,0.95,0.92}
+
+\lstdefinestyle{mystyle}{
+  backgroundcolor=\color{backcolour},
+  commentstyle=\color{codegreen},
+  keywordstyle=\color{magenta},
+  numberstyle=\tiny\color{codegray},
+  stringstyle=\color{codepurple},
+  basicstyle=\ttfamily,
+  breakatwhitespace=false,
+  breaklines=true,
+  captionpos=b,
+  keepspaces=true,
+  numbers=left,
+  numbersep=5pt,
+  showspaces=false,
+  showstringspaces=false,
+  showtabs=false,
+  tabsize=2
+}
+
+\lstset{style=mystyle}
+
+\setlength\parindent{0pt}
+\setlength\parskip{1em}
+
+\title{Lab 1 - OpenMP}
+\author{\textsc{Nguyen} Duc Tung}
+\date{}
+
+\begin{document}
+
+\maketitle
+
+\subsection*{How to use OpenMP?}
+I added \colorbox{backcolour}{\lstinline{#pragma omp parallel for}} before the \colorbox{backcolour}{\lstinline{for}} loop for the ``automagically'' to happen.
+
+\subsection*{How is the speedup?}
+Following is the result:
+
+\begin{lstlisting}
+labwork 1 CPU ellapsed 2954.7ms
+labwork 1 OpenMP ellapsed 712.3ms
+\end{lstlisting}
+
+The time is about 4 time faster, most likely it's paralelly executed on 4 threads.
+
+\end{document}
