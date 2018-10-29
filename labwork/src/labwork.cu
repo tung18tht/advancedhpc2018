@@ -103,7 +103,19 @@ void Labwork::labwork1_CPU() {
 }
 
 void Labwork::labwork1_OpenMP() {
+    int pixelCount = inputImage->width * inputImage->height;
+    outputImage = static_cast<char *>(malloc(pixelCount * 3));
 
+    #pragma omp parallel for
+
+    for (int j = 0; j < 100; j++) {     // let's do it 100 times, otherwise it's too fast!
+        for (int i = 0; i < pixelCount; i++) {
+            outputImage[i * 3] = (char) (((int) inputImage->buffer[i * 3] + (int) inputImage->buffer[i * 3 + 1] +
+                                          (int) inputImage->buffer[i * 3 + 2]) / 3);
+            outputImage[i * 3 + 1] = outputImage[i * 3];
+            outputImage[i * 3 + 2] = outputImage[i * 3];
+        }
+    }
 }
 
 int getSPcores(cudaDeviceProp devProp) {
@@ -133,24 +145,24 @@ int getSPcores(cudaDeviceProp devProp) {
 }
 
 void Labwork::labwork2_GPU() {
-    
+
 }
 
 void Labwork::labwork3_GPU() {
-   
+
 }
 
 void Labwork::labwork4_GPU() {
-   
+
 }
 
 // CPU implementation of Gaussian Blur
 void Labwork::labwork5_CPU() {
-    int kernel[] = { 0, 0, 1, 2, 1, 0, 0,  
-                     0, 3, 13, 22, 13, 3, 0,  
-                     1, 13, 59, 97, 59, 13, 1,  
-                     2, 22, 97, 159, 97, 22, 2,  
-                     1, 13, 59, 97, 59, 13, 1,  
+    int kernel[] = { 0, 0, 1, 2, 1, 0, 0,
+                     0, 3, 13, 22, 13, 3, 0,
+                     1, 13, 59, 97, 59, 13, 1,
+                     2, 22, 97, 159, 97, 22, 2,
+                     1, 13, 59, 97, 59, 13, 1,
                      0, 3, 13, 22, 13, 3, 0,
                      0, 0, 1, 2, 1, 0, 0 };
     int pixelCount = inputImage->width * inputImage->height;
@@ -182,7 +194,7 @@ void Labwork::labwork5_CPU() {
 }
 
 void Labwork::labwork5_GPU() {
-    
+
 }
 
 void Labwork::labwork6_GPU() {
