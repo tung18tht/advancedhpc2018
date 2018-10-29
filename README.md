@@ -12,5 +12,5 @@ Students are expected to:
 Student Info
 =======================
 
-* Name: MyName
-* ID: *YourIdHere*
+* Name: Nguyễn Đức Tùng
+* ID: ICT.M7.003
