@@ -1,0 +1,76 @@
+\documentclass[12pt]{article}
+
+\usepackage[a4paper, margin=1in]{geometry}
+
+\usepackage{listings}
+\usepackage{color}
+
+\definecolor{codegreen}{rgb}{0,0.6,0}
+\definecolor{codegray}{rgb}{0.5,0.5,0.5}
+\definecolor{codepurple}{rgb}{0.58,0,0.82}
+\definecolor{backcolour}{rgb}{0.95,0.95,0.92}
+
+\lstdefinestyle{mystyle}{
+  backgroundcolor=\color{backcolour},
+  commentstyle=\color{codegreen},
+  keywordstyle=\color{magenta},
+  numberstyle=\tiny\color{codegray},
+  stringstyle=\color{codepurple},
+  basicstyle=\ttfamily,
+  breakatwhitespace=false,
+  breaklines=true,
+  captionpos=b,
+  keepspaces=true,
+  numbers=left,
+  numbersep=5pt,
+  showspaces=false,
+  showstringspaces=false,
+  showtabs=false,
+  tabsize=2
+}
+
+\lstset{style=mystyle}
+
+\setlength\parindent{0pt}
+\setlength\parskip{1em}
+
+\title{Lab 2 - Device Info}
+\author{\textsc{Nguyen} Duc Tung}
+\date{}
+
+\begin{document}
+
+\maketitle
+
+\subsection*{Get to know the GPU}
+I used \colorbox{backcolour}{\lstinline{cudaGetDeviceCount()}} to get number of GPUs, and get their accordingly \colorbox{backcolour}{\lstinline{cudaDeviceProp}} struct.
+\\\\
+Here is the result on server ict3:
+
+\begin{lstlisting}
+GPU #0:
+ - Name: GeForce GTX 1080
+ - Core info:
+    + Clock rate: 1835000
+    + Number of cores: 2560
+    + Number of multiprocessors: 20
+    + Warp size: 32
+ - Memory info:
+    + Clock rate: 5005000
+    + Bus width: 256
+    + Bandwidth: 1281280000
+
+GPU #1:
+ - Name: GeForce GTX TITAN Black
+ - Core info:
+    + Clock rate: 980000
+    + Number of cores: 2880
+    + Number of multiprocessors: 15
+    + Warp size: 32
+ - Memory info:
+    + Clock rate: 3500000
+    + Bus width: 384
+    + Bandwidth: 1344000000
+\end{lstlisting}
+
+\end{document}
