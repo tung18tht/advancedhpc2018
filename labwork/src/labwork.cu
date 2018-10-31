@@ -45,37 +45,55 @@ int main(int argc, char **argv) {
             labwork.labwork2_GPU();
             break;
         case 3:
+            timer.start();
             labwork.labwork3_GPU();
+            printf("labwork 3 GPU ellapsed %.1fms\n", lwNum, timer.getElapsedTimeInMilliSec());
             labwork.saveOutputImage("labwork3-gpu-out.jpg");
             break;
         case 4:
+            timer.start();
             labwork.labwork4_GPU();
+            printf("labwork 4 GPU ellapsed %.1fms\n", lwNum, timer.getElapsedTimeInMilliSec());
             labwork.saveOutputImage("labwork4-gpu-out.jpg");
             break;
         case 5:
+            timer.start();
             labwork.labwork5_CPU();
+            printf("labwork 5 CPU ellapsed %.1fms\n", lwNum, timer.getElapsedTimeInMilliSec());
             labwork.saveOutputImage("labwork5-cpu-out.jpg");
+            timer.start();
             labwork.labwork5_GPU();
+            printf("labwork 5 GPU ellapsed %.1fms\n", lwNum, timer.getElapsedTimeInMilliSec());
             labwork.saveOutputImage("labwork5-gpu-out.jpg");
             break;
         case 6:
+            timer.start();
             labwork.labwork6_GPU();
+            printf("labwork 6 GPU ellapsed %.1fms\n", lwNum, timer.getElapsedTimeInMilliSec());
             labwork.saveOutputImage("labwork6-gpu-out.jpg");
             break;
         case 7:
+            timer.start();
             labwork.labwork7_GPU();
+            printf("labwork 7 GPU ellapsed %.1fms\n", lwNum, timer.getElapsedTimeInMilliSec());
             labwork.saveOutputImage("labwork7-gpu-out.jpg");
             break;
         case 8:
+            timer.start();
             labwork.labwork8_GPU();
+            printf("labwork 8 GPU ellapsed %.1fms\n", lwNum, timer.getElapsedTimeInMilliSec());
             labwork.saveOutputImage("labwork8-gpu-out.jpg");
             break;
         case 9:
+            timer.start();
             labwork.labwork9_GPU();
+            printf("labwork 9 GPU ellapsed %.1fms\n", lwNum, timer.getElapsedTimeInMilliSec());
             labwork.saveOutputImage("labwork9-gpu-out.jpg");
             break;
         case 10:
+            timer.start();
             labwork.labwork10_GPU();
+            printf("labwork 10 GPU ellapsed %.1fms\n", lwNum, timer.getElapsedTimeInMilliSec());
             labwork.saveOutputImage("labwork10-gpu-out.jpg");
             break;
     }
