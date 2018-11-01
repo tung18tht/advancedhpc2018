@@ -214,8 +214,39 @@ void Labwork::labwork3_GPU() {
     cudaFree(devOutput);
 }
 
-void Labwork::labwork4_GPU() {
+__global__ void grayscale2D(char *input, char *output) {
+    int globalIdX = threadIdx.x + blockIdx.x * blockDim.x;
+    int globalIdY = threadIdx.y + blockIdx.y * blockDim.y;
+    int globalId = globalIdX + globalIdY * gridDim.x * blockDim.x;
 
+    // int globalBlockIdx = blockIdx.x + gridDim.x * blockIdx.y;
+    // int globalId = globalBlockIdx * blockDim.x * blockDim.y + (threadIdx.x + blockDim.x * threadIdx.y);
+
+    output[globalId * 3] = (input[globalId * 3] + input[globalId * 3 + 1] + input[globalId * 3 + 2]) / 3;
+    output[globalId * 3 + 2] = output[globalId * 3 + 1] = output[globalId * 3];
+}
+
+void Labwork::labwork4_GPU() {
+    int pixelCount = inputImage->width * inputImage->height;
+
+    outputImage = (char *) malloc(pixelCount * 3);
+    char* devInput;
+    char* devOutput;
+
+    cudaMalloc(&devInput, pixelCount * 3);
+    cudaMalloc(&devOutput, pixelCount * 3);
+
+    cudaMemcpy(devInput, inputImage->buffer, pixelCount * 3, cudaMemcpyHostToDevice);
+
+    dim3 blockSize = dim3(1024, 1024);
+    dim3 gridSize = dim3(inputImage->width / 1024 + 1, inputImage->height / 1024 + 1);
+
+    grayscale2D<<<gridSize, blockSize>>>(devInput, devOutput);
+
+    cudaMemcpy(outputImage, devOutput, pixelCount * 3, cudaMemcpyDeviceToHost);
+
+    cudaFree(devInput);
+    cudaFree(devOutput);
 }
 
 // CPU implementation of Gaussian Blur
