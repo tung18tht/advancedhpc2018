@@ -206,7 +206,10 @@ void Labwork::labwork3_GPU() {
     int blockSize = 1024;
     int numBlock = pixelCount / blockSize;
 
-    grayscale<<<numBlock, blockSize>>>(devInput, devOutput);
+    for (int i = 0; i < 100; ++i)
+    {
+        grayscale<<<numBlock, blockSize>>>(devInput, devOutput);
+    }
 
     cudaMemcpy(outputImage, devOutput, pixelCount * 3, cudaMemcpyDeviceToHost);
 
@@ -238,10 +241,13 @@ void Labwork::labwork4_GPU() {
 
     cudaMemcpy(devInput, inputImage->buffer, pixelCount * 3, cudaMemcpyHostToDevice);
 
-    dim3 blockSize = dim3(1024, 1024);
-    dim3 gridSize = dim3(inputImage->width / 1024 + 1, inputImage->height / 1024 + 1);
+    dim3 blockSize = dim3(32, 32);
+    dim3 gridSize = dim3(inputImage->width / 32 + 1, inputImage->height / 32 + 1);
 
-    grayscale2D<<<gridSize, blockSize>>>(devInput, devOutput);
+    for (int i = 0; i < 100; ++i)
+    {
+        grayscale2D<<<gridSize, blockSize>>>(devInput, devOutput);
+    }
 
     cudaMemcpy(outputImage, devOutput, pixelCount * 3, cudaMemcpyDeviceToHost);
 
