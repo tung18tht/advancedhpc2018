@@ -110,7 +110,7 @@ void Labwork::saveOutputImage(std::string outputFileName) {
 void Labwork::labwork1_CPU() {
     int pixelCount = inputImage->width * inputImage->height;
     outputImage = static_cast<char *>(malloc(pixelCount * 3));
-    for (int j = 0; j < 100; j++) {		// let's do it 100 times, otherwise it's too fast!
+    for (int j = 0; j < 1000; j++) {		// let's do it 1000 times, otherwise it's too fast!
         for (int i = 0; i < pixelCount; i++) {
             outputImage[i * 3] = (char) (((int) inputImage->buffer[i * 3] +
                                           (int) inputImage->buffer[i * 3 + 1] +
@@ -127,7 +127,7 @@ void Labwork::labwork1_OpenMP() {
 
     #pragma omp parallel for
 
-    for (int j = 0; j < 100; j++) {     // let's do it 100 times, otherwise it's too fast!
+    for (int j = 0; j < 1000; j++) {     // let's do it 1000 times, otherwise it's too fast!
         for (int i = 0; i < pixelCount; i++) {
             outputImage[i * 3] = (char) (((int) inputImage->buffer[i * 3] + (int) inputImage->buffer[i * 3 + 1] +
                                           (int) inputImage->buffer[i * 3 + 2]) / 3);
@@ -206,7 +206,7 @@ void Labwork::labwork3_GPU() {
     int blockSize = 1024;
     int numBlock = pixelCount / blockSize;
 
-    for (int i = 0; i < 100; ++i)
+    for (int i = 0; i < 1000; ++i)
     {
         grayscale<<<numBlock, blockSize>>>(devInput, devOutput);
     }
@@ -241,10 +241,10 @@ void Labwork::labwork4_GPU() {
 
     cudaMemcpy(devInput, inputImage->buffer, pixelCount * 3, cudaMemcpyHostToDevice);
 
-    dim3 blockSize = dim3(32, 32);
+    dim3 blockSize = dim3(16, 16);
     dim3 gridSize = dim3(inputImage->width / 32 + 1, inputImage->height / 32 + 1);
 
-    for (int i = 0; i < 100; ++i)
+    for (int i = 0; i < 1000; ++i)
     {
         grayscale2D<<<gridSize, blockSize>>>(devInput, devOutput);
     }
