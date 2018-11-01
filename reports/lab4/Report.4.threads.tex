@@ -1,0 +1,73 @@
+\documentclass[12pt]{article}
+
+\usepackage[a4paper, margin=1in]{geometry}
+
+\usepackage{listings}
+\usepackage{color}
+\usepackage{array}
+
+\definecolor{codegreen}{rgb}{0,0.6,0}
+\definecolor{codegray}{rgb}{0.5,0.5,0.5}
+\definecolor{codepurple}{rgb}{0.58,0,0.82}
+\definecolor{backcolour}{rgb}{0.95,0.95,0.92}
+
+\lstdefinestyle{mystyle}{
+  backgroundcolor=\color{backcolour},
+  commentstyle=\color{codegreen},
+  keywordstyle=\color{magenta},
+  numberstyle=\tiny\color{codegray},
+  stringstyle=\color{codepurple},
+  basicstyle=\ttfamily,
+  breakatwhitespace=false,
+  breaklines=true,
+  captionpos=b,
+  keepspaces=true,
+  numbers=left,
+  numbersep=5pt,
+  showspaces=false,
+  showstringspaces=false,
+  showtabs=false,
+  tabsize=2
+}
+
+\lstset{style=mystyle}
+
+\setlength\parindent{0pt}
+\setlength\parskip{1em}
+
+\title{Lab 4 - Threads}
+\author{\textsc{Nguyen} Duc Tung}
+\date{}
+
+\begin{document}
+
+\maketitle
+
+I used 2-dimension blocks and grid:
+
+\begin{lstlisting}[language=C]
+dim3 blockSize = dim3(32, 32);
+dim3 gridSize = dim3(inputImage->width / 32 + 1, inputImage->height / 32 + 1);
+\end{lstlisting}
+
+and find the global thread ID as follow:
+
+\begin{lstlisting}[language=C]
+int globalIdX = threadIdx.x + blockIdx.x * blockDim.x;
+int globalIdY = threadIdx.y + blockIdx.y * blockDim.y;
+int globalId = globalIdX + globalIdY * gridDim.x * blockDim.x;
+\end{lstlisting}
+
+Here is the time comparision between different block sizes:
+
+\begin{table}[h]
+\centering
+\begin{tabular}{||c|c|c|c|c|c|c||}
+\hline
+Block size & 1024x1 & 1x1024 & 16x16 & 16x32 & 32x16 & 32x32 \\ \hline
+Time (ms)  & Error! & 3750   & 430   & 500   & 310   & 350   \\
+\hline
+\end{tabular}
+\end{table}
+
+\end{document}
