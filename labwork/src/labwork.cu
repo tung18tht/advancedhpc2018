@@ -217,9 +217,11 @@ void Labwork::labwork3_GPU() {
     cudaFree(devOutput);
 }
 
-__global__ void grayscale2D(char *input, char *output) {
+__global__ void grayscale2D(char *input, char *output, int width, int height) {
     int globalIdX = threadIdx.x + blockIdx.x * blockDim.x;
+    if (globalIdX >= width) return;
     int globalIdY = threadIdx.y + blockIdx.y * blockDim.y;
+    if (globalIdY >= height) return;
     int globalId = globalIdX + globalIdY * gridDim.x * blockDim.x;
 
     // int globalBlockIdx = blockIdx.x + gridDim.x * blockIdx.y;
@@ -241,12 +243,14 @@ void Labwork::labwork4_GPU() {
 
     cudaMemcpy(devInput, inputImage->buffer, pixelCount * 3, cudaMemcpyHostToDevice);
 
-    dim3 blockSize = dim3(16, 16);
-    dim3 gridSize = dim3(inputImage->width / 32 + 1, inputImage->height / 32 + 1);
+    int blockX = 32;
+    int blockY = 32;
+    dim3 blockSize = dim3(blockX, blockY);
+    dim3 gridSize = dim3((inputImage->width + blockX - 1) / blockX, (inputImage->height + blockY - 1) / blockY);
 
     for (int i = 0; i < 1000; ++i)
     {
-        grayscale2D<<<gridSize, blockSize>>>(devInput, devOutput);
+        grayscale2D<<<gridSize, blockSize>>>(devInput, devOutput, inputImage->width, inputImage->height);
     }
 
     cudaMemcpy(outputImage, devOutput, pixelCount * 3, cudaMemcpyDeviceToHost);
