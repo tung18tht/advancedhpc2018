@@ -376,11 +376,10 @@ __global__ void gaussianBlurOptimized(char *input, char *output, int width, int 
 
     __shared__ int sharedWeights[49];
 
-    // memcpy(sharedWeights, weights, sizeof(int)*49);
-
-    for (int i = 0; i < 49; ++i)
+    int localId = threadIdx.x + threadIdx.y * blockDim.x;
+    if (localId < 49)
     {
-        sharedWeights[i] = weights[i];
+        sharedWeights[localId] = weights[localId];
     }
 
     __syncthreads();
