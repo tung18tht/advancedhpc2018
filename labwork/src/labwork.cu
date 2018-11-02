@@ -62,9 +62,19 @@ int main(int argc, char **argv) {
             printf("labwork 5 CPU (1 time) ellapsed %.1fms\n", lwNum, timer.getElapsedTimeInMilliSec());
             labwork.saveOutputImage("labwork5-cpu-out.jpg");
             timer.start();
-            labwork.labwork5_GPU();
+            for (int i = 0; i < 100; ++i)
+            {
+                labwork.labwork5_GPU();
+            }
             printf("labwork 5 GPU (100 times) ellapsed %.1fms\n", lwNum, timer.getElapsedTimeInMilliSec());
             labwork.saveOutputImage("labwork5-gpu-out.jpg");
+            timer.start();
+            for (int i = 0; i < 100; ++i)
+            {
+                labwork.labwork5_GPU_optimized();
+            }
+            printf("labwork 5 GPU optimized (100 times) ellapsed %.1fms\n", lwNum, timer.getElapsedTimeInMilliSec());
+            labwork.saveOutputImage("labwork5-gpu-optimized-out.jpg");
             break;
         case 6:
             timer.start();
@@ -332,11 +342,37 @@ __global__ void gaussianBlur(char *input, char *output, int width, int height) {
     output[posOut * 3] = output[posOut * 3 + 1] = output[posOut * 3 + 2] = sum;
 }
 
+void Labwork::labwork5_GPU() {
+    int pixelCount = inputImage->width * inputImage->height;
+
+    outputImage = (char *) malloc(pixelCount * 3);
+    char* devInput;
+    char* devOutput;
+
+    cudaMalloc(&devInput, pixelCount * 3);
+    cudaMalloc(&devOutput, pixelCount * 3);
+
+    cudaMemcpy(devInput, inputImage->buffer, pixelCount * 3, cudaMemcpyHostToDevice);
+
+    int blockX = 32;
+    int blockY = 32;
+    dim3 blockSize = dim3(blockX, blockY);
+    dim3 gridSize = dim3((inputImage->width + blockX - 1) / blockX, (inputImage->height + blockY - 1) / blockY);
+
+    gaussianBlur<<<gridSize, blockSize>>>(devInput, devOutput, inputImage->width, inputImage->height);
+
+    cudaMemcpy(outputImage, devOutput, pixelCount * 3, cudaMemcpyDeviceToHost);
+
+    cudaFree(devInput);
+    cudaFree(devOutput);
+}
+
 __global__ void gaussianBlurOptimized(char *input, char *output, int width, int height, int* weights) {
     int globalIdX = threadIdx.x + blockIdx.x * blockDim.x;
     if (globalIdX >= width) return;
     int globalIdY = threadIdx.y + blockIdx.y * blockDim.y;
     if (globalIdY >= height) return;
+    int globalId = globalIdY * width + globalIdX;
 
     __shared__ int sharedWeights[49];
 
@@ -367,11 +403,12 @@ __global__ void gaussianBlurOptimized(char *input, char *output, int width, int 
         }
     }
     sum /= c;
-    int posOut = globalIdY * width + globalIdX;
-    output[posOut * 3] = output[posOut * 3 + 1] = output[posOut * 3 + 2] = sum;
+    output[globalId * 3] = sum;
+    output[globalId * 3 + 1] = sum;
+    output[globalId * 3 + 2] = sum;
 }
 
-void Labwork::labwork5_GPU() {
+void Labwork::labwork5_GPU_optimized() {
     int pixelCount = inputImage->width * inputImage->height;
 
     outputImage = (char *) malloc(pixelCount * 3);
@@ -388,14 +425,6 @@ void Labwork::labwork5_GPU() {
     dim3 blockSize = dim3(blockX, blockY);
     dim3 gridSize = dim3((inputImage->width + blockX - 1) / blockX, (inputImage->height + blockY - 1) / blockY);
 
-    // NORMAL PART
-    // for (int i = 0; i < 100; ++i)
-    // {
-    //     gaussianBlur<<<gridSize, blockSize>>>(devInput, devOutput, inputImage->width, inputImage->height);
-    // }
-    // NORMAL PART END
-
-    // OPTIMIZED PART
     int weights[] = {0, 0,  1,  2,   1,  0,  0,
                      0, 3,  13, 22,  13, 3,  0,
                      1, 13, 59, 97,  59, 13, 1,
@@ -408,11 +437,7 @@ void Labwork::labwork5_GPU() {
     cudaMalloc(&devWeights, 49 * sizeof(int));
     cudaMemcpy(devWeights, weights, 49 * sizeof(int), cudaMemcpyHostToDevice);
 
-    for (int i = 0; i < 100; ++i)
-    {
-        gaussianBlurOptimized<<<gridSize, blockSize>>>(devInput, devOutput, inputImage->width, inputImage->height, devWeights);
-    }
-    // OPTIMIZED PART END
+    gaussianBlurOptimized<<<gridSize, blockSize>>>(devInput, devOutput, inputImage->width, inputImage->height, devWeights);
 
     cudaMemcpy(outputImage, devOutput, pixelCount * 3, cudaMemcpyDeviceToHost);
 
