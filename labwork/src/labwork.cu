@@ -59,11 +59,11 @@ int main(int argc, char **argv) {
         case 5:
             timer.start();
             labwork.labwork5_CPU();
-            printf("labwork 5 CPU ellapsed %.1fms\n", lwNum, timer.getElapsedTimeInMilliSec());
+            printf("labwork 5 CPU (1 time) ellapsed %.1fms\n", lwNum, timer.getElapsedTimeInMilliSec());
             labwork.saveOutputImage("labwork5-cpu-out.jpg");
             timer.start();
             labwork.labwork5_GPU();
-            printf("labwork 5 GPU ellapsed %.1fms\n", lwNum, timer.getElapsedTimeInMilliSec());
+            printf("labwork 5 GPU (100 times) ellapsed %.1fms\n", lwNum, timer.getElapsedTimeInMilliSec());
             labwork.saveOutputImage("labwork5-gpu-out.jpg");
             break;
         case 6:
@@ -303,12 +303,46 @@ __global__ void gaussianBlur(char *input, char *output, int width, int height) {
     if (globalIdY >= height) return;
 
     int weights[] = {0, 0,  1,  2,   1,  0,  0,
-                    0, 3,  13, 22,  13, 3,  0,
-                    1, 13, 59, 97,  59, 13, 1,
-                    2, 22, 97, 159, 97, 22, 2,
-                    1, 13, 59, 97,  59, 13, 1,
-                    0, 3,  13, 22,  13, 3,  0,
-                    0, 0,  1,  2,   1,  0,  0};
+                     0, 3,  13, 22,  13, 3,  0,
+                     1, 13, 59, 97,  59, 13, 1,
+                     2, 22, 97, 159, 97, 22, 2,
+                     1, 13, 59, 97,  59, 13, 1,
+                     0, 3,  13, 22,  13, 3,  0,
+                     0, 0,  1,  2,   1,  0,  0};
+
+    int sum = 0;
+    int c = 0;
+    for (int y = -3; y <= 3; y++) {
+        for (int x = -3; x <= 3; x++) {
+            int i = globalIdX + x;
+            int j = globalIdY + y;
+            if (i < 0) continue;
+            if (i >= width) continue;
+            if (j < 0) continue;
+            if (j >= height) continue;
+            int tid = j * width + i;
+            unsigned char gray = (input[tid * 3] + input[tid * 3 + 1] + input[tid * 3 + 2])/3;
+            int coefficient = weights[(y+3) * 7 + x + 3];
+            sum = sum + gray * coefficient;
+            c += coefficient;
+        }
+    }
+    sum /= c;
+    int posOut = globalIdY * width + globalIdX;
+    output[posOut * 3] = output[posOut * 3 + 1] = output[posOut * 3 + 2] = sum;
+}
+
+__global__ void gaussianBlurOptimized(char *input, char *output, int width, int height, int* weights) {
+    int globalIdX = threadIdx.x + blockIdx.x * blockDim.x;
+    if (globalIdX >= width) return;
+    int globalIdY = threadIdx.y + blockIdx.y * blockDim.y;
+    if (globalIdY >= height) return;
+
+    __shared__ int sharedWeights[49];
+
+    memcpy(sharedWeights, weights, sizeof(int)*49);
+
+    __syncthreads();
 
     int sum = 0;
     int c = 0;
@@ -349,7 +383,31 @@ void Labwork::labwork5_GPU() {
     dim3 blockSize = dim3(blockX, blockY);
     dim3 gridSize = dim3((inputImage->width + blockX - 1) / blockX, (inputImage->height + blockY - 1) / blockY);
 
-    gaussianBlur<<<gridSize, blockSize>>>(devInput, devOutput, inputImage->width, inputImage->height);
+    // NORMAL PART
+    // for (int i = 0; i < 100; ++i)
+    // {
+    //     gaussianBlur<<<gridSize, blockSize>>>(devInput, devOutput, inputImage->width, inputImage->height);
+    // }
+    // NORMAL PART END
+
+    // OPTIMIZED PART
+    int weights[] = {0, 0,  1,  2,   1,  0,  0,
+                     0, 3,  13, 22,  13, 3,  0,
+                     1, 13, 59, 97,  59, 13, 1,
+                     2, 22, 97, 159, 97, 22, 2,
+                     1, 13, 59, 97,  59, 13, 1,
+                     0, 3,  13, 22,  13, 3,  0,
+                     0, 0,  1,  2,   1,  0,  0};
+
+    int* devWeights;
+    cudaMalloc(&devWeights, 49 * sizeof(int));
+    cudaMemcpy(devWeights, weights, 49 * sizeof(int), cudaMemcpyHostToDevice);
+
+    for (int i = 0; i < 100; ++i)
+    {
+        gaussianBlurOptimized<<<gridSize, blockSize>>>(devInput, devOutput, inputImage->width, inputImage->height, devWeights);
+    }
+    // OPTIMIZED PART END
 
     cudaMemcpy(outputImage, devOutput, pixelCount * 3, cudaMemcpyDeviceToHost);
 
