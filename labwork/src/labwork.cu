@@ -340,7 +340,12 @@ __global__ void gaussianBlurOptimized(char *input, char *output, int width, int 
 
     __shared__ int sharedWeights[49];
 
-    memcpy(sharedWeights, weights, sizeof(int)*49);
+    // memcpy(sharedWeights, weights, sizeof(int)*49);
+
+    for (int i = 0; i < 49; ++i)
+    {
+        sharedWeights[i] = weights[i];
+    }
 
     __syncthreads();
 
@@ -356,7 +361,7 @@ __global__ void gaussianBlurOptimized(char *input, char *output, int width, int 
             if (j >= height) continue;
             int tid = j * width + i;
             unsigned char gray = (input[tid * 3] + input[tid * 3 + 1] + input[tid * 3 + 2])/3;
-            int coefficient = weights[(y+3) * 7 + x + 3];
+            int coefficient = sharedWeights[(y+3) * 7 + x + 3];
             sum = sum + gray * coefficient;
             c += coefficient;
         }
