@@ -30,6 +30,8 @@ int main(int argc, char **argv) {
 
     // Lab 6
     int mode, param;
+    std::string inputFilename2;
+    JpegInfo *inputImage2;
 
     printf("Starting labwork %d\n", lwNum);
     Timer timer;
@@ -49,40 +51,28 @@ int main(int argc, char **argv) {
             break;
         case 3:
             timer.start();
-            for (int i = 0; i < 100; ++i)
-            {
-                labwork.labwork3_GPU();
-            }
+            labwork.labwork3_GPU();
             printf("labwork 3 GPU ellapsed %.1fms\n", lwNum, timer.getElapsedTimeInMilliSec());
             labwork.saveOutputImage("labwork3-gpu-out.jpg");
             break;
         case 4:
             timer.start();
-            for (int i = 0; i < 100; ++i)
-            {
-                labwork.labwork4_GPU();
-            }
+            labwork.labwork4_GPU();
             printf("labwork 4 GPU ellapsed %.1fms\n", lwNum, timer.getElapsedTimeInMilliSec());
             labwork.saveOutputImage("labwork4-gpu-out.jpg");
             break;
         case 5:
             timer.start();
             labwork.labwork5_CPU();
-            printf("labwork 5 CPU (1 time) ellapsed %.1fms\n", lwNum, timer.getElapsedTimeInMilliSec());
+            printf("labwork 5 CPU ellapsed %.1fms\n", lwNum, timer.getElapsedTimeInMilliSec());
             labwork.saveOutputImage("labwork5-cpu-out.jpg");
             timer.start();
-            for (int i = 0; i < 100; ++i)
-            {
-                labwork.labwork5_GPU();
-            }
-            printf("labwork 5 GPU (100 times) ellapsed %.1fms\n", lwNum, timer.getElapsedTimeInMilliSec());
+            labwork.labwork5_GPU();
+            printf("labwork 5 GPU ellapsed %.1fms\n", lwNum, timer.getElapsedTimeInMilliSec());
             labwork.saveOutputImage("labwork5-gpu-out.jpg");
             timer.start();
-            for (int i = 0; i < 100; ++i)
-            {
-                labwork.labwork5_GPU_optimized();
-            }
-            printf("labwork 5 GPU optimized (100 times) ellapsed %.1fms\n", lwNum, timer.getElapsedTimeInMilliSec());
+            labwork.labwork5_GPU_optimized();
+            printf("labwork 5 GPU optimized ellapsed %.1fms\n", lwNum, timer.getElapsedTimeInMilliSec());
             labwork.saveOutputImage("labwork5-gpu-optimized-out.jpg");
             break;
         case 6:
@@ -90,26 +80,19 @@ int main(int argc, char **argv) {
             param = atoi(argv[4]);
             if (mode == 0) {
                 timer.start();
-                for (int i = 0; i < 100; ++i)
-                {
-                    labwork.labwork6a_GPU(param);
-                }
+                labwork.labwork6a_GPU(param);
                 printf("labwork 6a GPU ellapsed %.1fms\n", lwNum, timer.getElapsedTimeInMilliSec());
                 labwork.saveOutputImage("labwork6a-gpu-out.jpg");
             } else if (mode == 1) {
                 timer.start();
-                for (int i = 0; i < 100; ++i)
-                {
-                    labwork.labwork6b_GPU(param);
-                }
+                labwork.labwork6b_GPU(param);
                 printf("labwork 6b GPU ellapsed %.1fms\n", lwNum, timer.getElapsedTimeInMilliSec());
                 labwork.saveOutputImage("labwork6b-gpu-out.jpg");
             } else if (mode == 2) {
+                inputFilename2 = std::string(argv[5]);
+                inputImage2 = jpegLoader.load(inputFileName2);
                 timer.start();
-                for (int i = 0; i < 100; ++i)
-                {
-                    labwork.labwork6c_GPU();
-                }
+                labwork.labwork6c_GPU();
                 printf("labwork 6c GPU ellapsed %.1fms\n", lwNum, timer.getElapsedTimeInMilliSec());
                 labwork.saveOutputImage("labwork6c-gpu-out.jpg");
             }
@@ -152,7 +135,7 @@ void Labwork::saveOutputImage(std::string outputFileName) {
 void Labwork::labwork1_CPU() {
     int pixelCount = inputImage->width * inputImage->height;
     outputImage = static_cast<char *>(malloc(pixelCount * 3));
-    for (int j = 0; j < 1000; j++) {		// let's do it 1000 times, otherwise it's too fast!
+    for (int j = 0; j < 1000; j++) {        // let's do it 1000 times, otherwise it's too fast!
         for (int i = 0; i < pixelCount; i++) {
             outputImage[i * 3] = (char) (((int) inputImage->buffer[i * 3] +
                                           (int) inputImage->buffer[i * 3 + 1] +
