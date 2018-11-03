@@ -13,6 +13,7 @@ private:
 public:
     void loadInputImage(std::string inputFileName);
     void saveOutputImage(std::string outputFileName);
+    JpegInfo* loadImage(std::string fileName);
 
     void labwork1_CPU();
     void labwork1_OpenMP();
