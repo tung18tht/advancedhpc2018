@@ -473,7 +473,8 @@ __global__ void binarization(char *input, char *output, int width, int height, i
     int globalId = globalIdY * width + globalIdX;
 
     unsigned char binary = (input[globalId * 3] + input[globalId * 3 + 1] + input[globalId * 3 + 2]) / 3;
-    binary = (binary / threshold) > 0 ? 255 : 0;
+    // binary = (binary / threshold) > 0 ? 255 : 0;
+    binary = min(binary / threshold, 1) * 255;
 
     output[globalId * 3] = binary;
     output[globalId * 3 + 1] = binary;
@@ -506,7 +507,28 @@ void Labwork::labwork6a_GPU(int threshold) {
 }
 
 void Labwork::labwork6b_GPU() {
+    // int pixelCount = inputImage->width * inputImage->height;
 
+    // outputImage = (char *) malloc(pixelCount * 3);
+    // char* devInput;
+    // char* devOutput;
+
+    // cudaMalloc(&devInput, pixelCount * 3);
+    // cudaMalloc(&devOutput, pixelCount * 3);
+
+    // cudaMemcpy(devInput, inputImage->buffer, pixelCount * 3, cudaMemcpyHostToDevice);
+
+    // int blockX = 32;
+    // int blockY = 32;
+    // dim3 blockSize = dim3(blockX, blockY);
+    // dim3 gridSize = dim3((inputImage->width + blockX - 1) / blockX, (inputImage->height + blockY - 1) / blockY);
+
+    // binarization<<<gridSize, blockSize>>>(devInput, devOutput, inputImage->width, inputImage->height, threshold);
+
+    // cudaMemcpy(outputImage, devOutput, pixelCount * 3, cudaMemcpyDeviceToHost);
+
+    // cudaFree(devInput);
+    // cudaFree(devOutput);
 }
 
 void Labwork::labwork6c_GPU() {
