@@ -28,6 +28,9 @@ int main(int argc, char **argv) {
         labwork.loadInputImage(inputFilename);
     }
 
+    // Lab 6
+    int threshold;
+
     printf("Starting labwork %d\n", lwNum);
     Timer timer;
     switch (lwNum) {
@@ -46,13 +49,19 @@ int main(int argc, char **argv) {
             break;
         case 3:
             timer.start();
-            labwork.labwork3_GPU();
+            for (int i = 0; i < 100; ++i)
+            {
+                labwork.labwork3_GPU();
+            }
             printf("labwork 3 GPU ellapsed %.1fms\n", lwNum, timer.getElapsedTimeInMilliSec());
             labwork.saveOutputImage("labwork3-gpu-out.jpg");
             break;
         case 4:
             timer.start();
-            labwork.labwork4_GPU();
+            for (int i = 0; i < 100; ++i)
+            {
+                labwork.labwork4_GPU();
+            }
             printf("labwork 4 GPU ellapsed %.1fms\n", lwNum, timer.getElapsedTimeInMilliSec());
             labwork.saveOutputImage("labwork4-gpu-out.jpg");
             break;
@@ -77,10 +86,28 @@ int main(int argc, char **argv) {
             labwork.saveOutputImage("labwork5-gpu-optimized-out.jpg");
             break;
         case 6:
+            threshold = atoi(argv[3]);
             timer.start();
-            labwork.labwork6_GPU();
-            printf("labwork 6 GPU ellapsed %.1fms\n", lwNum, timer.getElapsedTimeInMilliSec());
-            labwork.saveOutputImage("labwork6-gpu-out.jpg");
+            for (int i = 0; i < 100; ++i)
+            {
+                labwork.labwork6a_GPU(threshold);
+            }
+            printf("labwork 6a GPU ellapsed %.1fms\n", lwNum, timer.getElapsedTimeInMilliSec());
+            labwork.saveOutputImage("labwork6a-gpu-out.jpg");
+            timer.start();
+            for (int i = 0; i < 100; ++i)
+            {
+                labwork.labwork6b_GPU();
+            }
+            printf("labwork 6b GPU ellapsed %.1fms\n", lwNum, timer.getElapsedTimeInMilliSec());
+            labwork.saveOutputImage("labwork6b-gpu-out.jpg");
+            timer.start();
+            for (int i = 0; i < 100; ++i)
+            {
+                labwork.labwork6c_GPU();
+            }
+            printf("labwork 6c GPU ellapsed %.1fms\n", lwNum, timer.getElapsedTimeInMilliSec());
+            labwork.saveOutputImage("labwork6c-gpu-out.jpg");
             break;
         case 7:
             timer.start();
@@ -216,10 +243,7 @@ void Labwork::labwork3_GPU() {
     int blockSize = 1024;
     int numBlock = pixelCount / blockSize;
 
-    for (int i = 0; i < 1000; ++i)
-    {
-        grayscale<<<numBlock, blockSize>>>(devInput, devOutput);
-    }
+    grayscale<<<numBlock, blockSize>>>(devInput, devOutput);
 
     cudaMemcpy(outputImage, devOutput, pixelCount * 3, cudaMemcpyDeviceToHost);
 
@@ -258,10 +282,7 @@ void Labwork::labwork4_GPU() {
     dim3 blockSize = dim3(blockX, blockY);
     dim3 gridSize = dim3((inputImage->width + blockX - 1) / blockX, (inputImage->height + blockY - 1) / blockY);
 
-    for (int i = 0; i < 1000; ++i)
-    {
-        grayscale2D<<<gridSize, blockSize>>>(devInput, devOutput, inputImage->width, inputImage->height);
-    }
+    grayscale2D<<<gridSize, blockSize>>>(devInput, devOutput, inputImage->width, inputImage->height);
 
     cudaMemcpy(outputImage, devOutput, pixelCount * 3, cudaMemcpyDeviceToHost);
 
@@ -444,7 +465,51 @@ void Labwork::labwork5_GPU_optimized() {
     cudaFree(devOutput);
 }
 
-void Labwork::labwork6_GPU() {
+__global__ void binarization(char *input, char *output, int width, int height, int threshold) {
+    int globalIdX = threadIdx.x + blockIdx.x * blockDim.x;
+    if (globalIdX >= width) return;
+    int globalIdY = threadIdx.y + blockIdx.y * blockDim.y;
+    if (globalIdY >= height) return;
+    int globalId = globalIdY * width + globalIdX;
+
+    unsigned char binary = (input[globalId * 3] + input[globalId * 3 + 1] + input[globalId * 3 + 2]) / 3;
+    binary = (binary / threshold) > 0 ? 255 : 0;
+
+    output[globalId * 3] = binary;
+    output[globalId * 3 + 1] = binary;
+    output[globalId * 3 + 2] = binary;
+}
+
+void Labwork::labwork6a_GPU(int threshold) {
+    int pixelCount = inputImage->width * inputImage->height;
+
+    outputImage = (char *) malloc(pixelCount * 3);
+    char* devInput;
+    char* devOutput;
+
+    cudaMalloc(&devInput, pixelCount * 3);
+    cudaMalloc(&devOutput, pixelCount * 3);
+
+    cudaMemcpy(devInput, inputImage->buffer, pixelCount * 3, cudaMemcpyHostToDevice);
+
+    int blockX = 32;
+    int blockY = 32;
+    dim3 blockSize = dim3(blockX, blockY);
+    dim3 gridSize = dim3((inputImage->width + blockX - 1) / blockX, (inputImage->height + blockY - 1) / blockY);
+
+    binarization<<<gridSize, blockSize>>>(devInput, devOutput, inputImage->width, inputImage->height, threshold);
+
+    cudaMemcpy(outputImage, devOutput, pixelCount * 3, cudaMemcpyDeviceToHost);
+
+    cudaFree(devInput);
+    cudaFree(devOutput);
+}
+
+void Labwork::labwork6b_GPU() {
+
+}
+
+void Labwork::labwork6c_GPU() {
 
 }
 
