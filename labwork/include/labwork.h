@@ -28,7 +28,7 @@ public:
     void labwork5_GPU_optimized();
 
     void labwork6a_GPU(int threshold);
-    void labwork6b_GPU();
+    void labwork6b_GPU(int brightnessChange);
     void labwork6c_GPU();
 
     void labwork7_GPU();
