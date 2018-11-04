@@ -251,7 +251,7 @@ __global__ void grayscale2D(unsigned char *input, char *output, int width, int h
     if (globalIdX >= width) return;
     int globalIdY = threadIdx.y + blockIdx.y * blockDim.y;
     if (globalIdY >= height) return;
-    int globalId = globalIdX + globalIdY * gridDim.x * blockDim.x;
+    int globalId = globalIdY * width + globalIdX;
 
     // int globalBlockIdx = blockIdx.x + gridDim.x * blockIdx.y;
     // int globalId = globalBlockIdx * blockDim.x * blockDim.y + (threadIdx.x + blockDim.x * threadIdx.y);
@@ -329,6 +329,7 @@ __global__ void gaussianBlur(unsigned char *input, char *output, int width, int 
     if (globalIdX >= width) return;
     int globalIdY = threadIdx.y + blockIdx.y * blockDim.y;
     if (globalIdY >= height) return;
+    int globalId = globalIdY * width + globalIdX;
 
     int weights[] = {0, 0,  1,  2,   1,  0,  0,
                      0, 3,  13, 22,  13, 3,  0,
@@ -356,8 +357,8 @@ __global__ void gaussianBlur(unsigned char *input, char *output, int width, int 
         }
     }
     sum /= c;
-    int posOut = globalIdY * width + globalIdX;
-    output[posOut * 3] = output[posOut * 3 + 1] = output[posOut * 3 + 2] = sum;
+
+    output[globalId * 3] = output[globalId * 3 + 1] = output[globalId * 3 + 2] = sum;
 }
 
 void Labwork::labwork5_GPU() {
@@ -593,7 +594,7 @@ __global__ void getGreyscaleAndMaxMinIntensity(unsigned char *input, unsigned ch
     if (globalIdX >= width) return;
     int globalIdY = threadIdx.y + blockIdx.y * blockDim.y;
     if (globalIdY >= height) return;
-    int globalId = globalIdX + globalIdY * gridDim.x * blockDim.x;
+    int globalId = globalIdY * width + globalIdX;
 
     unsigned char grey = (input[globalId * 3] + input[globalId * 3 + 1] + input[globalId * 3 + 2]) / 3;
 
@@ -652,6 +653,14 @@ void Labwork::labwork7_GPU() {
     grayscaleStretch<<<gridSize, blockSize>>>(devInputGrey, devOutput, devMax, devMin, inputImage->width, inputImage->height);
 
     cudaMemcpy(outputImage, devOutput, pixelCount * 3, cudaMemcpyDeviceToHost);
+
+    // unsigned char *max, *min;
+    // max = (unsigned char *) malloc(1);
+    // min = (unsigned char *) malloc(1);
+    // cudaMemcpy(max, devMax, 1, cudaMemcpyDeviceToHost);
+    // cudaMemcpy(min, devMin, 1, cudaMemcpyDeviceToHost);
+    // printf("Max: %d\n", *max);
+    // printf("Min: %d\n", *min);
 
     cudaFree(devInput);
     cudaFree(devOutput);
