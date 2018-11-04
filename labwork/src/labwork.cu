@@ -588,8 +588,75 @@ void Labwork::labwork6c_GPU(float ratio, JpegInfo *inputImage2) {
     cudaFree(devOutput);
 }
 
-void Labwork::labwork7_GPU() {
+__global__ void getGreyscaleAndMaxMinIntensity(unsigned char *input, unsigned char *output, unsigned char *max, unsigned char *min, int width, int height) {
+    int globalIdX = threadIdx.x + blockIdx.x * blockDim.x;
+    if (globalIdX >= width) return;
+    int globalIdY = threadIdx.y + blockIdx.y * blockDim.y;
+    if (globalIdY >= height) return;
+    int globalId = globalIdX + globalIdY * gridDim.x * blockDim.x;
 
+    unsigned char grey = (input[globalId * 3] + input[globalId * 3 + 1] + input[globalId * 3 + 2]) / 3;
+
+    output[globalId] = grey;
+
+    if (grey > max[0])
+    {
+        max[0] = grey;
+    }
+
+    if (grey < min[0])
+    {
+        min[0] = grey;
+    }
+}
+
+__global__ void grayscaleStretch(unsigned char *input, char *output, unsigned char *max, unsigned char *min, int width, int height) {
+    int globalIdX = threadIdx.x + blockIdx.x * blockDim.x;
+    if (globalIdX >= width) return;
+    int globalIdY = threadIdx.y + blockIdx.y * blockDim.y;
+    if (globalIdY >= height) return;
+    int globalId = globalIdY * width + globalIdX;
+
+    unsigned char greyStretched = ((float) (input[globalId] - min[0]) / (max[0] - min[0])) * 255;
+
+    output[globalId * 3] = greyStretched;
+    output[globalId * 3 + 1] = greyStretched;
+    output[globalId * 3 + 2] = greyStretched;
+}
+
+void Labwork::labwork7_GPU() {
+    int pixelCount = inputImage->width * inputImage->height;
+
+    outputImage = (char *) malloc(pixelCount * 3);
+    unsigned char *devInput, *devInputGrey;
+    char *devOutput;
+    unsigned char *devMax, *devMin;
+    unsigned char tempMax = 0, tempMin = 255;
+
+    cudaMalloc(&devInput, pixelCount * 3);
+    cudaMalloc(&devInputGrey, pixelCount);
+    cudaMalloc(&devOutput, pixelCount * 3);
+    cudaMalloc(&devMax, 1);
+    cudaMalloc(&devMin, 1);
+
+    cudaMemcpy(devInput, inputImage->buffer, pixelCount * 3, cudaMemcpyHostToDevice);
+    cudaMemcpy(devMax, &tempMax, 1, cudaMemcpyHostToDevice);
+    cudaMemcpy(devMin, &tempMin, 1, cudaMemcpyHostToDevice);
+
+    int blockX = 32;
+    int blockY = 32;
+    dim3 blockSize = dim3(blockX, blockY);
+    dim3 gridSize = dim3((inputImage->width + blockX - 1) / blockX, (inputImage->height + blockY - 1) / blockY);
+
+    getGreyscaleAndMaxMinIntensity<<<gridSize, blockSize>>>(devInput, devInputGrey, devMax, devMin, inputImage->width, inputImage->height);
+    grayscaleStretch<<<gridSize, blockSize>>>(devInputGrey, devOutput, devMax, devMin, inputImage->width, inputImage->height);
+
+    cudaMemcpy(outputImage, devOutput, pixelCount * 3, cudaMemcpyDeviceToHost);
+
+    cudaFree(devInput);
+    cudaFree(devOutput);
+    cudaFree(devMax);
+    cudaFree(devMin);
 }
 
 void Labwork::labwork8_GPU() {
