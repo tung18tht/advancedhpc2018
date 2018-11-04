@@ -30,6 +30,7 @@ int main(int argc, char **argv) {
 
     // Lab 6
     int mode, param;
+    float paramFloat;
     std::string inputFilename2;
     JpegInfo *inputImage2;
 
@@ -89,10 +90,11 @@ int main(int argc, char **argv) {
                 printf("labwork 6b GPU ellapsed %.1fms\n", lwNum, timer.getElapsedTimeInMilliSec());
                 labwork.saveOutputImage("labwork6b-gpu-out.jpg");
             } else if (mode == 2) {
+                paramFloat = atof(argv[4]);
                 inputFilename2 = std::string(argv[5]);
                 inputImage2 = labwork.loadImage(inputFilename2);
                 timer.start();
-                labwork.labwork6c_GPU();
+                labwork.labwork6c_GPU(paramFloat, inputImage2);
                 printf("labwork 6c GPU ellapsed %.1fms\n", lwNum, timer.getElapsedTimeInMilliSec());
                 labwork.saveOutputImage("labwork6c-gpu-out.jpg");
             }
@@ -542,8 +544,48 @@ void Labwork::labwork6b_GPU(int brightnessChange) {
     cudaFree(devOutput);
 }
 
-void Labwork::labwork6c_GPU() {
+__global__ void blend(unsigned char *input, unsigned char *input2, char *output, int width, int height, float ratio) {
+    int globalIdX = threadIdx.x + blockIdx.x * blockDim.x;
+    if (globalIdX >= width) return;
+    int globalIdY = threadIdx.y + blockIdx.y * blockDim.y;
+    if (globalIdY >= height) return;
+    int globalId = globalIdY * width + globalIdX;
 
+    unsigned char r = input[globalId * 3] * ratio + input2[globalId * 3] * (1 - ratio);
+    unsigned char g = input[globalId * 3 + 1] * ratio + input2[globalId * 3 + 1] * (1 - ratio);
+    unsigned char b = input[globalId * 3 + 2] * ratio + input2[globalId * 3 + 2] * (1 - ratio);
+
+    output[globalId * 3] = r;
+    output[globalId * 3 + 1] = g;
+    output[globalId * 3 + 2] = b;
+}
+
+void Labwork::labwork6c_GPU(float ratio, JpegInfo *inputImage2) {
+    int pixelCount = inputImage->width * inputImage->height;
+
+    outputImage = (char *) malloc(pixelCount * 3);
+    unsigned char* devInput;
+    unsigned char* devInput2;
+    char* devOutput;
+
+    cudaMalloc(&devInput, pixelCount * 3);
+    cudaMalloc(&devInput2, pixelCount * 3);
+    cudaMalloc(&devOutput, pixelCount * 3);
+
+    cudaMemcpy(devInput, inputImage->buffer, pixelCount * 3, cudaMemcpyHostToDevice);
+    cudaMemcpy(devInput2, inputImage2->buffer, pixelCount * 3, cudaMemcpyHostToDevice);
+
+    int blockX = 32;
+    int blockY = 32;
+    dim3 blockSize = dim3(blockX, blockY);
+    dim3 gridSize = dim3((inputImage->width + blockX - 1) / blockX, (inputImage->height + blockY - 1) / blockY);
+
+    blend<<<gridSize, blockSize>>>(devInput, devInput2, devOutput, inputImage->width, inputImage->height, ratio);
+
+    cudaMemcpy(outputImage, devOutput, pixelCount * 3, cudaMemcpyDeviceToHost);
+
+    cudaFree(devInput);
+    cudaFree(devOutput);
 }
 
 void Labwork::labwork7_GPU() {

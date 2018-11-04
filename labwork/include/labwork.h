@@ -30,7 +30,7 @@ public:
 
     void labwork6a_GPU(int threshold);
     void labwork6b_GPU(int brightnessChange);
-    void labwork6c_GPU();
+    void labwork6c_GPU(float ratio, JpegInfo *inputImage2);
 
     void labwork7_GPU();
 
