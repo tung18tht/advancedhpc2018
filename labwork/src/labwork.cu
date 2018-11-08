@@ -589,7 +589,7 @@ void Labwork::labwork6c_GPU(float ratio, JpegInfo *inputImage2) {
     cudaFree(devOutput);
 }
 
-__global__ void getGreyscaleAndMaxMinIntensity(unsigned char *input, unsigned char *output, unsigned char *max, unsigned char *min, int width, int height) {
+__global__ void getGreyscaleAndMaxMinIntensity(unsigned char *input, unsigned char *output, unsigned char *globalMax, unsigned char *globalMin, int width, int height) {
     int globalIdX = threadIdx.x + blockIdx.x * blockDim.x;
     if (globalIdX >= width) return;
     int globalIdY = threadIdx.y + blockIdx.y * blockDim.y;
@@ -597,17 +597,29 @@ __global__ void getGreyscaleAndMaxMinIntensity(unsigned char *input, unsigned ch
     int globalId = globalIdY * width + globalIdX;
 
     unsigned char grey = (input[globalId * 3] + input[globalId * 3 + 1] + input[globalId * 3 + 2]) / 3;
-
     output[globalId] = grey;
 
-    if (grey > max[0])
-    {
-        max[0] = grey;
+    extern __shared__ unsigned char shared[];
+    unsigned char *blockMaxArray = shared;
+    unsigned char *blockMinArray = &blockMaxArray[blockDim.x * blockDim.y];
+
+    int localId = threadIdx.x + threadIdx.y * blockDim.x;
+    blockMaxArray[localId] = grey;
+    blockMinArray[localId] = grey;
+
+    __syncthreads();
+
+    for (int s = (blockDim.x * blockDim.y) / 2; s > 0; s /= 2) {
+        if (localId < s) {
+            blockMaxArray[localId] = max(blockMaxArray[localId], blockMaxArray[localId + s]);
+            blockMinArray[localId] = min(blockMinArray[localId], blockMinArray[localId + s]);
+            __syncthreads();
+        }
     }
 
-    if (grey < min[0])
-    {
-        min[0] = grey;
+    if (localId == 0) {
+        globalMax[0] = max(blockMaxArray[0], globalMax[0]);
+        globalMin[0] = min(blockMinArray[0], globalMin[0]);
     }
 }
 
@@ -649,7 +661,7 @@ void Labwork::labwork7_GPU() {
     dim3 blockSize = dim3(blockX, blockY);
     dim3 gridSize = dim3((inputImage->width + blockX - 1) / blockX, (inputImage->height + blockY - 1) / blockY);
 
-    getGreyscaleAndMaxMinIntensity<<<gridSize, blockSize>>>(devInput, devInputGrey, devMax, devMin, inputImage->width, inputImage->height);
+    getGreyscaleAndMaxMinIntensity<<<gridSize, blockSize, blockX * blockY * 2>>>(devInput, devInputGrey, devMax, devMin, inputImage->width, inputImage->height);
     grayscaleStretch<<<gridSize, blockSize>>>(devInputGrey, devOutput, devMax, devMin, inputImage->width, inputImage->height);
 
     cudaMemcpy(outputImage, devOutput, pixelCount * 3, cudaMemcpyDeviceToHost);
