@@ -687,9 +687,9 @@ __global__ void RGB2HSV(unsigned char *input, int *hue, float *saturation, float
     if (globalIdY >= height) return;
     int globalId = globalIdY * width + globalIdX;
 
-    float floatR = input[globalId * 3] / 255;
-    float floatG = input[globalId * 3 + 1] / 255;
-    float floatB = input[globalId * 3 + 2] / 255;
+    float floatR = (float) input[globalId * 3] / 255;
+    float floatG = (float) input[globalId * 3 + 1] / 255;
+    float floatB = (float) input[globalId * 3 + 2] / 255;
     float maxValue = max(max(floatR, floatG), floatB);
     float delta = maxValue - min(min(floatR, floatG), floatB);
 
@@ -707,6 +707,10 @@ __global__ void RGB2HSV(unsigned char *input, int *hue, float *saturation, float
             hue[globalId] = 60 * (((floatB - floatR) / delta) + 2);
         } else {
             hue[globalId] = 60 * (((floatR - floatG) / delta) + 4);
+        }
+
+        if (hue[globalId] < 0) {
+            hue[globalId] = 360 + hue[globalId];
         }
     }
 }
@@ -753,6 +757,7 @@ __global__ void HSV2RGB(int *hue, float *saturation, float *value, char *output,
 
 void Labwork::labwork8_GPU() {
     int pixelCount = inputImage->width * inputImage->height;
+    // int pixelCount = 16, width = 16, height = 1;
 
     outputImage = (char *) malloc(pixelCount * 3);
 
@@ -767,18 +772,49 @@ void Labwork::labwork8_GPU() {
     cudaMalloc(&devSaturation, pixelCount * sizeof(float));
     cudaMalloc(&devValue, pixelCount * sizeof(float));
 
+    // unsigned char temp[16*3] = {
+    //     0, 0, 0,
+    //     255, 255, 255,
+    //     255, 0, 0,
+    //     0, 255, 0,
+    //     0, 0, 255,
+    //     255, 255, 0,
+    //     0, 255, 255,
+    //     255, 0, 255,
+    //     192, 192, 192,
+    //     128, 128, 128,
+    //     128, 0, 0,
+    //     128, 128, 0,
+    //     0, 128, 0,
+    //     128, 0, 128,
+    //     0, 128, 128,
+    //     0, 0, 128
+    // };
+
     cudaMemcpy(devInput, inputImage->buffer, pixelCount * 3, cudaMemcpyHostToDevice);
+    // cudaMemcpy(devInput, temp, pixelCount * 3, cudaMemcpyHostToDevice);
 
     int blockX = 32;
     int blockY = 32;
     dim3 blockSize = dim3(blockX, blockY);
     dim3 gridSize = dim3((inputImage->width + blockX - 1) / blockX, (inputImage->height + blockY - 1) / blockY);
+    // dim3 gridSize = dim3((width + blockX - 1) / blockX, (height + blockY - 1) / blockY);
 
     RGB2HSV<<<gridSize, blockSize>>>(devInput, devHue, devSaturation, devValue, inputImage->width, inputImage->height);
 
     HSV2RGB<<<gridSize, blockSize>>>(devHue, devSaturation, devValue, devOutput, inputImage->width, inputImage->height);
 
     cudaMemcpy(outputImage, devOutput, pixelCount * 3, cudaMemcpyDeviceToHost);
+
+    // int *hue = (int *) malloc(pixelCount * sizeof(int));
+    // float *saturation = (float *) malloc(pixelCount * sizeof(float));
+    // float *value = (float *) malloc(pixelCount * sizeof(float));
+    // cudaMemcpy(hue, devHue, pixelCount * sizeof(int), cudaMemcpyDeviceToHost);
+    // cudaMemcpy(saturation, devSaturation, pixelCount * sizeof(float), cudaMemcpyDeviceToHost);
+    // cudaMemcpy(value, devValue, pixelCount * sizeof(float), cudaMemcpyDeviceToHost);
+    // for (int i = 0; i < pixelCount; ++i) {
+    //     printf("H: %d, S:%.2f, V:%.2f\n", hue[i], saturation[i], value[i]);
+    // }
 
     cudaFree(devInput);
     cudaFree(devOutput);
