@@ -680,8 +680,111 @@ void Labwork::labwork7_GPU() {
     cudaFree(devMin);
 }
 
-void Labwork::labwork8_GPU() {
+__global__ void RGB2HSV(unsigned char *input, int *hue, float *saturation, float *value, int width, int height) {
+    int globalIdX = threadIdx.x + blockIdx.x * blockDim.x;
+    if (globalIdX >= width) return;
+    int globalIdY = threadIdx.y + blockIdx.y * blockDim.y;
+    if (globalIdY >= height) return;
+    int globalId = globalIdY * width + globalIdX;
 
+    float floatR = input[globalId * 3] / 255;
+    float floatG = input[globalId * 3 + 1] / 255;
+    float floatB = input[globalId * 3 + 2] / 255;
+    float maxValue = max(max(floatR, floatG), floatB);
+    float delta = maxValue - min(min(floatR, floatG), floatB);
+
+    value[globalId] = maxValue;
+
+    if (delta == 0) {
+        hue[globalId] = 0;
+        saturation[globalId] = 0;
+    } else {
+        saturation[globalId] = delta / maxValue;
+
+        if (maxValue == floatR) {
+            hue[globalId] = 60 * ((int) ((floatG - floatB) / delta) % 6);
+        } else if (maxValue == floatG) {
+            hue[globalId] = 60 * (((floatB - floatR) / delta) + 2);
+        } else {
+            hue[globalId] = 60 * (((floatR - floatG) / delta) + 4);
+        }
+    }
+}
+
+__global__ void HSV2RGB(int *hue, float *saturation, float *value, char *output, int width, int height) {
+    int globalIdX = threadIdx.x + blockIdx.x * blockDim.x;
+    if (globalIdX >= width) return;
+    int globalIdY = threadIdx.y + blockIdx.y * blockDim.y;
+    if (globalIdY >= height) return;
+    int globalId = globalIdY * width + globalIdX;
+
+    float d = hue[globalId] / 60;
+    float f = d - (int) d % 6;
+    float l = value[globalId] * (1 - saturation[globalId]);
+    float m = value[globalId] * (1 - f * saturation[globalId]);
+    float n = value[globalId] * (1 - (1 - f) * saturation[globalId]);
+
+    if (hue[globalId] < 60) {
+        output[globalId * 3] = value[globalId] * 255;
+        output[globalId * 3 + 1] = n * 255;
+        output[globalId * 3 + 2] = l * 255;
+    } else if (hue[globalId] < 120) {
+        output[globalId * 3] = m * 255;
+        output[globalId * 3 + 1] = value[globalId] * 255;
+        output[globalId * 3 + 2] = l * 255;
+    } else if (hue[globalId] < 180) {
+        output[globalId * 3] = l * 255;
+        output[globalId * 3 + 1] = value[globalId] * 255;
+        output[globalId * 3 + 2] = n * 255;
+    } else if (hue[globalId] < 240) {
+        output[globalId * 3] = l * 255;
+        output[globalId * 3 + 1] = m * 255;
+        output[globalId * 3 + 2] = value[globalId] * 255;
+    } else if (hue[globalId] < 300) {
+        output[globalId * 3] = n * 255;
+        output[globalId * 3 + 1] = l * 255;
+        output[globalId * 3 + 2] = value[globalId] * 255;
+    } else {
+        output[globalId * 3] = value[globalId] * 255;
+        output[globalId * 3 + 1] = l * 255;
+        output[globalId * 3 + 2] = m * 255;
+    }
+}
+
+void Labwork::labwork8_GPU() {
+    int pixelCount = inputImage->width * inputImage->height;
+
+    outputImage = (char *) malloc(pixelCount * 3);
+
+    unsigned char *devInput;
+    int *devHue;
+    float *devSaturation, *devValue;
+    char *devOutput;
+
+    cudaMalloc(&devInput, pixelCount * 3);
+    cudaMalloc(&devOutput, pixelCount * 3);
+    cudaMalloc(&devHue, pixelCount * sizeof(int));
+    cudaMalloc(&devSaturation, pixelCount * sizeof(float));
+    cudaMalloc(&devValue, pixelCount * sizeof(float));
+
+    cudaMemcpy(devInput, inputImage->buffer, pixelCount * 3, cudaMemcpyHostToDevice);
+
+    int blockX = 32;
+    int blockY = 32;
+    dim3 blockSize = dim3(blockX, blockY);
+    dim3 gridSize = dim3((inputImage->width + blockX - 1) / blockX, (inputImage->height + blockY - 1) / blockY);
+
+    RGB2HSV<<<gridSize, blockSize>>>(devInput, devHue, devSaturation, devValue, inputImage->width, inputImage->height);
+
+    HSV2RGB<<<gridSize, blockSize>>>(devHue, devSaturation, devValue, devOutput, inputImage->width, inputImage->height);
+
+    cudaMemcpy(outputImage, devOutput, pixelCount * 3, cudaMemcpyDeviceToHost);
+
+    cudaFree(devInput);
+    cudaFree(devOutput);
+    cudaFree(devHue);
+    cudaFree(devSaturation);
+    cudaFree(devValue);
 }
 
 void Labwork::labwork9_GPU() {
