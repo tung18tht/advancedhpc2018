@@ -722,42 +722,39 @@ __global__ void HSV2RGB(int *hue, float *saturation, float *value, char *output,
     if (globalIdY >= height) return;
     int globalId = globalIdY * width + globalIdX;
 
-    float d = hue[globalId] / 60;
-    float f = d - (int) d % 6;
-    float l = value[globalId] * (1 - saturation[globalId]);
-    float m = value[globalId] * (1 - f * saturation[globalId]);
-    float n = value[globalId] * (1 - (1 - f) * saturation[globalId]);
+    float c = value[globalId] * saturation[globalId];
+    float x = c * (1 - abs(fmod(hue[globalId] / 60.0, 2.0) - 1));
+    float m = value[globalId] - c;
 
     if (hue[globalId] < 60) {
-        output[globalId * 3] = value[globalId] * 255;
-        output[globalId * 3 + 1] = n * 255;
-        output[globalId * 3 + 2] = l * 255;
-    } else if (hue[globalId] < 120) {
-        output[globalId * 3] = m * 255;
-        output[globalId * 3 + 1] = value[globalId] * 255;
-        output[globalId * 3 + 2] = l * 255;
-    } else if (hue[globalId] < 180) {
-        output[globalId * 3] = l * 255;
-        output[globalId * 3 + 1] = value[globalId] * 255;
-        output[globalId * 3 + 2] = n * 255;
-    } else if (hue[globalId] < 240) {
-        output[globalId * 3] = l * 255;
-        output[globalId * 3 + 1] = m * 255;
-        output[globalId * 3 + 2] = value[globalId] * 255;
-    } else if (hue[globalId] < 300) {
-        output[globalId * 3] = n * 255;
-        output[globalId * 3 + 1] = l * 255;
-        output[globalId * 3 + 2] = value[globalId] * 255;
-    } else {
-        output[globalId * 3] = value[globalId] * 255;
-        output[globalId * 3 + 1] = l * 255;
+        output[globalId * 3] = (c + m) * 255;
+        output[globalId * 3 + 1] = (x + m) * 255;
         output[globalId * 3 + 2] = m * 255;
+    } else if (hue[globalId] < 120) {
+        output[globalId * 3] = (x + m) * 255;
+        output[globalId * 3 + 1] = (c + m) * 255;
+        output[globalId * 3 + 2] = m * 255;
+    } else if (hue[globalId] < 180) {
+        output[globalId * 3] = m * 255;
+        output[globalId * 3 + 1] = (c + m) * 255;
+        output[globalId * 3 + 2] = (x + m) * 255;
+    } else if (hue[globalId] < 240) {
+        output[globalId * 3] = m * 255;
+        output[globalId * 3 + 1] = (x + m) * 255;
+        output[globalId * 3 + 2] = (c + m) * 255;
+    } else if (hue[globalId] < 300) {
+        output[globalId * 3] = (x + m) * 255;
+        output[globalId * 3 + 1] = m * 255;
+        output[globalId * 3 + 2] = (c + m) * 255;
+    } else {
+        output[globalId * 3] = (c + m) * 255;
+        output[globalId * 3 + 1] = m * 255;
+        output[globalId * 3 + 2] = (x + m) * 255;
     }
 }
 
 void Labwork::labwork8_GPU() {
     int pixelCount = inputImage->width * inputImage->height;
-    // int pixelCount = 16, width = 16, height = 1;
 
     outputImage = (char *) malloc(pixelCount * 3);
 
@@ -772,49 +769,18 @@ void Labwork::labwork8_GPU() {
     cudaMalloc(&devSaturation, pixelCount * sizeof(float));
     cudaMalloc(&devValue, pixelCount * sizeof(float));
 
-    // unsigned char temp[16*3] = {
-    //     0, 0, 0,
-    //     255, 255, 255,
-    //     255, 0, 0,
-    //     0, 255, 0,
-    //     0, 0, 255,
-    //     255, 255, 0,
-    //     0, 255, 255,
-    //     255, 0, 255,
-    //     192, 192, 192,
-    //     128, 128, 128,
-    //     128, 0, 0,
-    //     128, 128, 0,
-    //     0, 128, 0,
-    //     128, 0, 128,
-    //     0, 128, 128,
-    //     0, 0, 128
-    // };
-
     cudaMemcpy(devInput, inputImage->buffer, pixelCount * 3, cudaMemcpyHostToDevice);
-    // cudaMemcpy(devInput, temp, pixelCount * 3, cudaMemcpyHostToDevice);
 
     int blockX = 32;
     int blockY = 32;
     dim3 blockSize = dim3(blockX, blockY);
     dim3 gridSize = dim3((inputImage->width + blockX - 1) / blockX, (inputImage->height + blockY - 1) / blockY);
-    // dim3 gridSize = dim3((width + blockX - 1) / blockX, (height + blockY - 1) / blockY);
 
     RGB2HSV<<<gridSize, blockSize>>>(devInput, devHue, devSaturation, devValue, inputImage->width, inputImage->height);
 
     HSV2RGB<<<gridSize, blockSize>>>(devHue, devSaturation, devValue, devOutput, inputImage->width, inputImage->height);
 
     cudaMemcpy(outputImage, devOutput, pixelCount * 3, cudaMemcpyDeviceToHost);
-
-    // int *hue = (int *) malloc(pixelCount * sizeof(int));
-    // float *saturation = (float *) malloc(pixelCount * sizeof(float));
-    // float *value = (float *) malloc(pixelCount * sizeof(float));
-    // cudaMemcpy(hue, devHue, pixelCount * sizeof(int), cudaMemcpyDeviceToHost);
-    // cudaMemcpy(saturation, devSaturation, pixelCount * sizeof(float), cudaMemcpyDeviceToHost);
-    // cudaMemcpy(value, devValue, pixelCount * sizeof(float), cudaMemcpyDeviceToHost);
-    // for (int i = 0; i < pixelCount; ++i) {
-    //     printf("H: %d, S:%.2f, V:%.2f\n", hue[i], saturation[i], value[i]);
-    // }
 
     cudaFree(devInput);
     cudaFree(devOutput);
