@@ -687,26 +687,26 @@ __global__ void RGB2HSV(unsigned char *input, int *hue, float *saturation, float
     if (globalIdY >= height) return;
     int globalId = globalIdY * width + globalIdX;
 
-    float floatR = (float) input[globalId * 3] / 255;
-    float floatG = (float) input[globalId * 3 + 1] / 255;
-    float floatB = (float) input[globalId * 3 + 2] / 255;
+    float floatR = input[globalId * 3] / 255.0f;
+    float floatG = input[globalId * 3 + 1] / 255.0f;
+    float floatB = input[globalId * 3 + 2] / 255.0f;
     float maxValue = max(max(floatR, floatG), floatB);
     float delta = maxValue - min(min(floatR, floatG), floatB);
 
     value[globalId] = maxValue;
 
-    if (delta == 0) {
+    if (delta == 0.0f) {
         hue[globalId] = 0;
-        saturation[globalId] = 0;
+        saturation[globalId] = 0.0f;
     } else {
         saturation[globalId] = delta / maxValue;
 
         if (maxValue == floatR) {
-            hue[globalId] = 60 * ((int) ((floatG - floatB) / delta) % 6);
+            hue[globalId] = 60.0f * fmod((floatG - floatB) / delta, 6.0f);
         } else if (maxValue == floatG) {
-            hue[globalId] = 60 * (((floatB - floatR) / delta) + 2);
+            hue[globalId] = 60.0f * ((floatB - floatR) / delta + 2.0f);
         } else {
-            hue[globalId] = 60 * (((floatR - floatG) / delta) + 4);
+            hue[globalId] = 60.0f * ((floatR - floatG) / delta + 4.0f);
         }
 
         if (hue[globalId] < 0) {
@@ -723,33 +723,33 @@ __global__ void HSV2RGB(int *hue, float *saturation, float *value, char *output,
     int globalId = globalIdY * width + globalIdX;
 
     float c = value[globalId] * saturation[globalId];
-    float x = c * (1 - abs(fmod(hue[globalId] / 60.0, 2.0) - 1));
+    float x = c * (1.0f - abs(fmod(hue[globalId] / 60.0f, 2.0f) - 1.0f));
     float m = value[globalId] - c;
 
     if (hue[globalId] < 60) {
-        output[globalId * 3] = (c + m) * 255;
-        output[globalId * 3 + 1] = (x + m) * 255;
-        output[globalId * 3 + 2] = m * 255;
+        output[globalId * 3] = (c + m) * 255.0f;
+        output[globalId * 3 + 1] = (x + m) * 255.0f;
+        output[globalId * 3 + 2] = m * 255.0f;
     } else if (hue[globalId] < 120) {
-        output[globalId * 3] = (x + m) * 255;
-        output[globalId * 3 + 1] = (c + m) * 255;
-        output[globalId * 3 + 2] = m * 255;
+        output[globalId * 3] = (x + m) * 255.0f;
+        output[globalId * 3 + 1] = (c + m) * 255.0f;
+        output[globalId * 3 + 2] = m * 255.0f;
     } else if (hue[globalId] < 180) {
-        output[globalId * 3] = m * 255;
-        output[globalId * 3 + 1] = (c + m) * 255;
-        output[globalId * 3 + 2] = (x + m) * 255;
+        output[globalId * 3] = m * 255.0f;
+        output[globalId * 3 + 1] = (c + m) * 255.0f;
+        output[globalId * 3 + 2] = (x + m) * 255.0f;
     } else if (hue[globalId] < 240) {
-        output[globalId * 3] = m * 255;
-        output[globalId * 3 + 1] = (x + m) * 255;
-        output[globalId * 3 + 2] = (c + m) * 255;
+        output[globalId * 3] = m * 255.0f;
+        output[globalId * 3 + 1] = (x + m) * 255.0f;
+        output[globalId * 3 + 2] = (c + m) * 255.0f;
     } else if (hue[globalId] < 300) {
-        output[globalId * 3] = (x + m) * 255;
-        output[globalId * 3 + 1] = m * 255;
-        output[globalId * 3 + 2] = (c + m) * 255;
+        output[globalId * 3] = (x + m) * 255.0f;
+        output[globalId * 3 + 1] = m * 255.0f;
+        output[globalId * 3 + 2] = (c + m) * 255.0f;
     } else {
-        output[globalId * 3] = (c + m) * 255;
-        output[globalId * 3 + 1] = m * 255;
-        output[globalId * 3 + 2] = (x + m) * 255;
+        output[globalId * 3] = (c + m) * 255.0f;
+        output[globalId * 3 + 1] = m * 255.0f;
+        output[globalId * 3 + 2] = (x + m) * 255.0f;
     }
 }
 
