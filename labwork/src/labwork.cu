@@ -589,37 +589,69 @@ void Labwork::labwork6c_GPU(float ratio, JpegInfo *inputImage2) {
     cudaFree(devOutput);
 }
 
-__global__ void getGreyscaleAndMaxMinIntensity(unsigned char *input, unsigned char *output, unsigned char *globalMax, unsigned char *globalMin, int width, int height) {
+__global__ void getGreyscale(unsigned char *input, unsigned char *output, int width, int height) {
     int globalIdX = threadIdx.x + blockIdx.x * blockDim.x;
     if (globalIdX >= width) return;
     int globalIdY = threadIdx.y + blockIdx.y * blockDim.y;
     if (globalIdY >= height) return;
     int globalId = globalIdY * width + globalIdX;
 
-    unsigned char grey = (input[globalId * 3] + input[globalId * 3 + 1] + input[globalId * 3 + 2]) / 3;
-    output[globalId] = grey;
+    output[globalId] = (input[globalId * 3] + input[globalId * 3 + 1] + input[globalId * 3 + 2]) / 3;
+}
 
-    extern __shared__ unsigned char shared[];
-    unsigned char *blockMaxArray = shared;
-    unsigned char *blockMinArray = &blockMaxArray[blockDim.x * blockDim.y];
+__global__ void getMaxIntensity(unsigned char *input, unsigned char *output, int count) {
+    extern __shared__ unsigned char blockShareArray[];
 
-    int localId = threadIdx.x + threadIdx.y * blockDim.x;
-    blockMaxArray[localId] = grey;
-    blockMinArray[localId] = grey;
+    int blockSize = blockDim.x * blockDim.y;
+    int localId = threadIdx.x + blockDim.x * threadIdx.y;
+    int globalId = blockIdx.x * blockSize + localId;
+
+    if (globalId < count) {
+        blockShareArray[localId] = input[globalId];
+    } else {
+        blockShareArray[localId] = 0;
+    }
 
     __syncthreads();
 
-    for (int s = (blockDim.x * blockDim.y) / 2; s > 0; s /= 2) {
-        if (localId < s) {
-            blockMaxArray[localId] = max(blockMaxArray[localId], blockMaxArray[localId + s]);
-            blockMinArray[localId] = min(blockMinArray[localId], blockMinArray[localId + s]);
-            __syncthreads();
+    for (int s = 1; s < blockSize; s *= 2) {
+        if (localId % (s * 2) == 0) {
+            blockShareArray[localId] = max(blockShareArray[localId], blockShareArray[localId + s]);
         }
+
+        __syncthreads();
     }
 
     if (localId == 0) {
-        globalMax[0] = max(blockMaxArray[0], globalMax[0]);
-        globalMin[0] = min(blockMinArray[0], globalMin[0]);
+        output[blockIdx.x] = blockShareArray[0];
+    }
+}
+
+__global__ void getMinIntensity(unsigned char *input, unsigned char *output, int count) {
+    extern __shared__ unsigned char blockShareArray[];
+
+    int blockSize = blockDim.x * blockDim.y;
+    int localId = threadIdx.x + blockDim.x * threadIdx.y;
+    int globalId = blockIdx.x * blockSize + localId;
+
+    if (globalId < count) {
+        blockShareArray[localId] = input[globalId];
+    } else {
+        blockShareArray[localId] = 255;
+    }
+
+    __syncthreads();
+
+    for (int s = 1; s < blockSize; s *= 2) {
+        if (localId % (s * 2) == 0) {
+            blockShareArray[localId] = min(blockShareArray[localId], blockShareArray[localId + s]);
+        }
+
+        __syncthreads();
+    }
+
+    if (localId == 0) {
+        output[blockIdx.x] = blockShareArray[0];
     }
 }
 
@@ -641,43 +673,70 @@ void Labwork::labwork7_GPU() {
     int pixelCount = inputImage->width * inputImage->height;
 
     outputImage = (char *) malloc(pixelCount * 3);
-    unsigned char *devInput, *devInputGrey;
+    unsigned char *devInput, *devGrey;
     char *devOutput;
-    unsigned char *devMax, *devMin;
-    unsigned char tempMax = 0, tempMin = 255;
 
     cudaMalloc(&devInput, pixelCount * 3);
-    cudaMalloc(&devInputGrey, pixelCount);
+    cudaMalloc(&devGrey, pixelCount);
     cudaMalloc(&devOutput, pixelCount * 3);
-    cudaMalloc(&devMax, 1);
-    cudaMalloc(&devMin, 1);
 
     cudaMemcpy(devInput, inputImage->buffer, pixelCount * 3, cudaMemcpyHostToDevice);
-    cudaMemcpy(devMax, &tempMax, 1, cudaMemcpyHostToDevice);
-    cudaMemcpy(devMin, &tempMin, 1, cudaMemcpyHostToDevice);
 
     int blockX = 32;
     int blockY = 32;
     dim3 blockSize = dim3(blockX, blockY);
     dim3 gridSize = dim3((inputImage->width + blockX - 1) / blockX, (inputImage->height + blockY - 1) / blockY);
 
-    getGreyscaleAndMaxMinIntensity<<<gridSize, blockSize, blockX * blockY * 2>>>(devInput, devInputGrey, devMax, devMin, inputImage->width, inputImage->height);
-    grayscaleStretch<<<gridSize, blockSize>>>(devInputGrey, devOutput, devMax, devMin, inputImage->width, inputImage->height);
+    getGreyscale<<<gridSize, blockSize>>>(devInput, devGrey, inputImage->width, inputImage->height);
+
+    // REDUCTION BEGIN ----------------------------------------------
+    int threadsPerBlock = blockX * blockY;
+    int reduceGridSize = (pixelCount + threadsPerBlock - 1) / threadsPerBlock;
+    int swap = 0;
+
+    unsigned char *devGlobalMaxArray1, *devGlobalMaxArray2, *devGlobalMinArray1, *devGlobalMinArray2;
+    cudaMalloc(&devGlobalMaxArray1, reduceGridSize);
+    cudaMalloc(&devGlobalMinArray1, reduceGridSize);
+
+    unsigned char *maxArrayPointer[2], *minArrayPointer[2];
+    maxArrayPointer[swap] = devGlobalMaxArray1;
+    minArrayPointer[swap] = devGlobalMinArray1;
+
+    getMaxIntensity<<<reduceGridSize, blockSize, threadsPerBlock>>>(devGrey, devGlobalMaxArray1, pixelCount);
+    getMinIntensity<<<reduceGridSize, blockSize, threadsPerBlock>>>(devGrey, devGlobalMinArray1, pixelCount);
+
+    int tempCount = reduceGridSize;
+    reduceGridSize = (reduceGridSize + threadsPerBlock - 1) / threadsPerBlock;
+
+    cudaMalloc(&devGlobalMaxArray2, reduceGridSize);
+    cudaMalloc(&devGlobalMinArray2, reduceGridSize);
+    maxArrayPointer[!swap] = devGlobalMaxArray2;
+    minArrayPointer[!swap] = devGlobalMinArray2;
+
+    while (reduceGridSize > 1) {
+        getMaxIntensity<<<reduceGridSize, blockSize, threadsPerBlock>>>(maxArrayPointer[swap], maxArrayPointer[!swap], tempCount);
+        getMinIntensity<<<reduceGridSize, blockSize, threadsPerBlock>>>(minArrayPointer[swap], minArrayPointer[!swap], tempCount);
+
+        tempCount = reduceGridSize;
+        reduceGridSize = (reduceGridSize + threadsPerBlock - 1) / threadsPerBlock;
+        swap = !swap;
+    }
+
+    getMaxIntensity<<<1, blockSize, threadsPerBlock>>>(maxArrayPointer[swap], maxArrayPointer[!swap], tempCount);
+    getMinIntensity<<<1, blockSize, threadsPerBlock>>>(minArrayPointer[swap], minArrayPointer[!swap], tempCount);
+    // REDUCTION END ------------------------------------------------
+
+    grayscaleStretch<<<gridSize, blockSize>>>(devGrey, devOutput, maxArrayPointer[!swap], minArrayPointer[!swap], inputImage->width, inputImage->height);
 
     cudaMemcpy(outputImage, devOutput, pixelCount * 3, cudaMemcpyDeviceToHost);
 
-    // unsigned char *max, *min;
-    // max = (unsigned char *) malloc(1);
-    // min = (unsigned char *) malloc(1);
-    // cudaMemcpy(max, devMax, 1, cudaMemcpyDeviceToHost);
-    // cudaMemcpy(min, devMin, 1, cudaMemcpyDeviceToHost);
-    // printf("Max: %d\n", *max);
-    // printf("Min: %d\n", *min);
-
     cudaFree(devInput);
+    cudaFree(devGrey);
     cudaFree(devOutput);
-    cudaFree(devMax);
-    cudaFree(devMin);
+    cudaFree(devGlobalMaxArray1);
+    cudaFree(devGlobalMaxArray2);
+    cudaFree(devGlobalMinArray1);
+    cudaFree(devGlobalMinArray2);
 }
 
 __global__ void RGB2HSV(unsigned char *input, int *hue, float *saturation, float *value, int width, int height) {
