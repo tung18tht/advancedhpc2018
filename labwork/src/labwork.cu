@@ -848,8 +848,78 @@ void Labwork::labwork8_GPU() {
     cudaFree(devValue);
 }
 
-void Labwork::labwork9_GPU() {
+__global__ void histogram(unsigned char *input, int *output, int width, int height) {
+    int globalIdX = threadIdx.x + blockIdx.x * blockDim.x;
+    if (globalIdX >= width) return;
+    int globalIdY = threadIdx.y + blockIdx.y * blockDim.y;
+    if (globalIdY >= height) return;
+    int globalId = globalIdY * width + globalIdX;
 
+    atomicAdd(&output[input[globalId]], 1);
+}
+
+__global__ void histogramEqualizationMap(int *histogram, unsigned char *equalizationMap, int totalPixels) {
+    extern __shared__ float probabilities[];
+    probabilities[threadIdx.x] = (float) histogram[threadIdx.x] / totalPixels;
+    __syncthreads();
+
+    float cdf = 0.0f;
+    for (int i = 0; i <= threadIdx.x; i++) {
+        cdf += probabilities[i];
+    }
+
+    equalizationMap[threadIdx.x] = cdf * 255;
+}
+
+__global__ void histogramEqualization(unsigned char *devGrey, unsigned char *equalizationMap, char *output, int width, int height) {
+    int globalIdX = threadIdx.x + blockIdx.x * blockDim.x;
+    if (globalIdX >= width) return;
+    int globalIdY = threadIdx.y + blockIdx.y * blockDim.y;
+    if (globalIdY >= height) return;
+    int globalId = globalIdY * width + globalIdX;
+
+    unsigned char newGrey = equalizationMap[devGrey[globalId]];
+    output[globalId * 3] = newGrey;
+    output[globalId * 3 + 1] = newGrey;
+    output[globalId * 3 + 2] = newGrey;
+}
+
+void Labwork::labwork9_GPU() {
+    int pixelCount = inputImage->width * inputImage->height;
+
+    outputImage = (char *) malloc(pixelCount * 3);
+
+    unsigned char *devInput, *devGrey, *devEqualizationMap;
+    int *devHistogram;
+    char *devOutput;
+
+    cudaMalloc(&devInput, pixelCount * 3);
+    cudaMalloc(&devGrey, pixelCount);
+    cudaMalloc(&devEqualizationMap, 256);
+    cudaMalloc(&devHistogram, sizeof(int) * 256);
+    cudaMalloc(&devOutput, pixelCount * 3);
+
+    cudaMemset(devHistogram, 0, sizeof(int) * 256);
+
+    cudaMemcpy(devInput, inputImage->buffer, pixelCount * 3, cudaMemcpyHostToDevice);
+
+    int blockX = 32;
+    int blockY = 32;
+    dim3 blockSize = dim3(blockX, blockY);
+    dim3 gridSize = dim3((inputImage->width + blockX - 1) / blockX, (inputImage->height + blockY - 1) / blockY);
+
+    getGreyscale<<<gridSize, blockSize>>>(devInput, devGrey, inputImage->width, inputImage->height);
+    histogram<<<gridSize, blockSize>>>(devGrey, devHistogram, inputImage->width, inputImage->height);
+    histogramEqualizationMap<<<1, 256, sizeof(float) * 256>>>(devHistogram, devEqualizationMap, pixelCount);
+    histogramEqualization<<<gridSize, blockSize>>>(devGrey, devEqualizationMap, devOutput, inputImage->width, inputImage->height);
+
+    cudaMemcpy(outputImage, devOutput, pixelCount * 3, cudaMemcpyDeviceToHost);
+
+    cudaFree(devInput);
+    cudaFree(devGrey);
+    cudaFree(devEqualizationMap);
+    cudaFree(devHistogram);
+    cudaFree(devOutput);
 }
 
 void Labwork::labwork10_GPU() {
