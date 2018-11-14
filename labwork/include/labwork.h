@@ -38,5 +38,5 @@ public:
 
     void labwork9_GPU();
 
-    void labwork10_GPU();
+    void labwork10_GPU(int windowSize);
 };

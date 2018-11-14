@@ -28,7 +28,7 @@ int main(int argc, char **argv) {
         labwork.loadInputImage(inputFilename);
     }
 
-    // Lab 6
+    // Lab 6 & 10
     int mode, param;
     float paramFloat;
     std::string inputFilename2;
@@ -118,8 +118,9 @@ int main(int argc, char **argv) {
             labwork.saveOutputImage("labwork9-gpu-out.jpg");
             break;
         case 10:
+            param = atoi(argv[3]);
             timer.start();
-            labwork.labwork10_GPU();
+            labwork.labwork10_GPU(param);
             printf("labwork 10 GPU ellapsed %.1fms\n", lwNum, timer.getElapsedTimeInMilliSec());
             labwork.saveOutputImage("labwork10-gpu-out.jpg");
             break;
@@ -922,6 +923,194 @@ void Labwork::labwork9_GPU() {
     cudaFree(devOutput);
 }
 
-void Labwork::labwork10_GPU() {
+__global__ void RGB2Value(unsigned char *input, float *value, int width, int height) {
+    int globalIdX = threadIdx.x + blockIdx.x * blockDim.x;
+    if (globalIdX >= width) return;
+    int globalIdY = threadIdx.y + blockIdx.y * blockDim.y;
+    if (globalIdY >= height) return;
+    int globalId = globalIdY * width + globalIdX;
 
+    float floatR = input[globalId * 3] / 255.0f;
+    float floatG = input[globalId * 3 + 1] / 255.0f;
+    float floatB = input[globalId * 3 + 2] / 255.0f;
+
+    value[globalId] = max(max(floatR, floatG), floatB);
+}
+
+__global__ void kuwahara(unsigned char *input, float *value, char *output, int width, int height, int windowSize) {
+    int globalIdX = threadIdx.x + blockIdx.x * blockDim.x;
+    if (globalIdX >= width) return;
+    int globalIdY = threadIdx.y + blockIdx.y * blockDim.y;
+    if (globalIdY >= height) return;
+    int globalId = globalIdY * width + globalIdX;
+
+    int windowPivots[4][2];
+    // windowPivots[[w1x, w1y], [w2x, w2y], [w3x, w3y], [w4x, w4y]]
+    // whereas w1x = w3x, w1y = w2y, w2x = w4x, w3y = w4y
+    windowPivots[0][0] = windowPivots[2][0] = max(globalIdX - windowSize + 1, 0);
+    windowPivots[0][1] = windowPivots[1][1] = max(globalIdY - windowSize + 1, 0);
+    windowPivots[1][0] = windowPivots[3][0] = min(globalIdX + windowSize - 1, width - 1);
+    windowPivots[2][1] = windowPivots[3][1] = min(globalIdY + windowSize - 1, height - 1);
+
+    float standardDeviations[4];
+    int noOfCells[4] = {0, 0, 0, 0};
+
+    // window #1
+    float tempTotal = 0.0f;
+    for (int i = windowPivots[0][1]; i <= globalIdY; i++) {
+        for (int j = windowPivots[0][0]; j <= globalIdX; j++) {
+            noOfCells[0]++;
+            tempTotal += value[i * width + j];
+        }
+    }
+
+    float mean = tempTotal / noOfCells[0];
+    tempTotal = 0.0f;
+    for (int i = windowPivots[0][1]; i <= globalIdY; i++) {
+        for (int j = windowPivots[0][0]; j <= globalIdX; j++) {
+            tempTotal += pow(value[i * width + j] - mean, 2);
+        }
+    }
+
+    standardDeviations[0] = sqrt(tempTotal / noOfCells[0]);
+
+    // window #2
+    tempTotal = 0.0f;
+    for (int i = windowPivots[1][1]; i <= globalIdY; i++) {
+        for (int j = windowPivots[1][0]; j >= globalIdX; j--) {
+            noOfCells[1]++;
+            tempTotal += value[i * width + j];
+        }
+    }
+
+    mean = tempTotal / noOfCells[1];
+    tempTotal = 0.0f;
+    for (int i = windowPivots[1][1]; i <= globalIdY; i++) {
+        for (int j = windowPivots[1][0]; j >= globalIdX; j--) {
+            tempTotal += pow(value[i * width + j] - mean, 2);
+        }
+    }
+
+    standardDeviations[1] = sqrt(tempTotal / noOfCells[1]);
+
+    // window #3
+    tempTotal = 0.0f;
+    for (int i = windowPivots[2][1]; i >= globalIdY; i--) {
+        for (int j = windowPivots[2][0]; j <= globalIdX; j++) {
+            noOfCells[2]++;
+            tempTotal += value[i * width + j];
+        }
+    }
+
+    mean = tempTotal / noOfCells[2];
+    tempTotal = 0.0f;
+    for (int i = windowPivots[2][1]; i >= globalIdY; i--) {
+        for (int j = windowPivots[2][0]; j <= globalIdX; j++) {
+            tempTotal += pow(value[i * width + j] - mean, 2);
+        }
+    }
+
+    standardDeviations[2] = sqrt(tempTotal / noOfCells[2]);
+
+    // window #4
+    tempTotal = 0.0f;
+    for (int i = windowPivots[3][1]; i >= globalIdY; i--) {
+        for (int j = windowPivots[3][0]; j >= globalIdX; j--) {
+            noOfCells[3]++;
+            tempTotal += value[i * width + j];
+        }
+    }
+
+    mean = tempTotal / noOfCells[3];
+    tempTotal = 0.0f;
+    for (int i = windowPivots[3][1]; i >= globalIdY; i--) {
+        for (int j = windowPivots[3][0]; j >= globalIdX; j--) {
+            tempTotal += pow(value[i * width + j] - mean, 2);
+        }
+    }
+
+    standardDeviations[3] = sqrt(tempTotal / noOfCells[3]);
+
+    mean = min(standardDeviations[0], min(standardDeviations[1], min(standardDeviations[2], standardDeviations[3])));
+    if (mean == standardDeviations[0]) {
+        int r = 0, g = 0, b = 0;
+        for (int i = windowPivots[0][1]; i <= globalIdY; i++) {
+            for (int j = windowPivots[0][0]; j <= globalIdX; j++) {
+                r += input[(i * width + j) * 3];
+                g += input[(i * width + j) * 3 + 1];
+                b += input[(i * width + j) * 3 + 2];
+            }
+        }
+
+        output[globalId * 3] = r / noOfCells[0];
+        output[globalId * 3 + 1] = g / noOfCells[0];
+        output[globalId * 3 + 2] = b / noOfCells[0];
+    } else if (mean == standardDeviations[1]) {
+        int r = 0, g = 0, b = 0;
+        for (int i = windowPivots[1][1]; i <= globalIdY; i++) {
+            for (int j = windowPivots[1][0]; j >= globalIdX; j--) {
+                r += input[(i * width + j) * 3];
+                g += input[(i * width + j) * 3 + 1];
+                b += input[(i * width + j) * 3 + 2];
+            }
+        }
+
+        output[globalId * 3] = r / noOfCells[1];
+        output[globalId * 3 + 1] = g / noOfCells[1];
+        output[globalId * 3 + 2] = b / noOfCells[1];
+    } else if (mean == standardDeviations[2]) {
+        int r = 0, g = 0, b = 0;
+        for (int i = windowPivots[2][1]; i >= globalIdY; i--) {
+            for (int j = windowPivots[2][0]; j <= globalIdX; j++) {
+                r += input[(i * width + j) * 3];
+                g += input[(i * width + j) * 3 + 1];
+                b += input[(i * width + j) * 3 + 2];
+            }
+        }
+
+        output[globalId * 3] = r / noOfCells[2];
+        output[globalId * 3 + 1] = g / noOfCells[2];
+        output[globalId * 3 + 2] = b / noOfCells[2];
+    } else {
+        int r = 0, g = 0, b = 0;
+        for (int i = windowPivots[3][1]; i >= globalIdY; i--) {
+            for (int j = windowPivots[3][0]; j >= globalIdX; j--) {
+                r += input[(i * width + j) * 3];
+                g += input[(i * width + j) * 3 + 1];
+                b += input[(i * width + j) * 3 + 2];
+            }
+        }
+
+        output[globalId * 3] = r / noOfCells[3];
+        output[globalId * 3 + 1] = g / noOfCells[3];
+        output[globalId * 3 + 2] = b / noOfCells[3];
+    }
+}
+
+void Labwork::labwork10_GPU(int windowSize) {
+    int pixelCount = inputImage->width * inputImage->height;
+
+    outputImage = (char *) malloc(pixelCount * 3);
+    unsigned char *devInput;
+    float *devValue;
+    char *devOutput;
+
+    cudaMalloc(&devInput, pixelCount * 3);
+    cudaMalloc(&devValue, pixelCount * sizeof(float));
+    cudaMalloc(&devOutput, pixelCount * 3);
+
+    cudaMemcpy(devInput, inputImage->buffer, pixelCount * 3, cudaMemcpyHostToDevice);
+
+    int blockX = 32;
+    int blockY = 32;
+    dim3 blockSize = dim3(blockX, blockY);
+    dim3 gridSize = dim3((inputImage->width + blockX - 1) / blockX, (inputImage->height + blockY - 1) / blockY);
+
+    RGB2Value<<<gridSize, blockSize>>>(devInput, devValue, inputImage->width, inputImage->height);
+    kuwahara<<<gridSize, blockSize>>>(devInput, devValue, devOutput, inputImage->width, inputImage->height, windowSize);
+
+    cudaMemcpy(outputImage, devOutput, pixelCount * 3, cudaMemcpyDeviceToHost);
+
+    cudaFree(devInput);
+    cudaFree(devOutput);
 }
