@@ -42,6 +42,7 @@ int main(int argc, char **argv) {
             labwork.labwork1_CPU();
             printf("labwork 1 CPU ellapsed %.1fms\n", lwNum, timer.getElapsedTimeInMilliSec());
             labwork.saveOutputImage("labwork1-cpu-out.jpg");
+
             timer.start();
             labwork.labwork1_OpenMP();
             printf("labwork 1 OpenMP ellapsed %.1fms\n", lwNum, timer.getElapsedTimeInMilliSec());
@@ -52,14 +53,18 @@ int main(int argc, char **argv) {
             break;
         case 3:
             timer.start();
-            labwork.labwork3_GPU();
-            printf("labwork 3 GPU ellapsed %.1fms\n", lwNum, timer.getElapsedTimeInMilliSec());
+            for (int i = 0; i < 100; ++i) {
+                labwork.labwork3_GPU();
+            }
+            printf("labwork 3 GPU (100 times) ellapsed %.1fms\n", lwNum, timer.getElapsedTimeInMilliSec());
             labwork.saveOutputImage("labwork3-gpu-out.jpg");
             break;
         case 4:
             timer.start();
-            labwork.labwork4_GPU();
-            printf("labwork 4 GPU ellapsed %.1fms\n", lwNum, timer.getElapsedTimeInMilliSec());
+            for (int i = 0; i < 100; ++i) {
+                labwork.labwork4_GPU();
+            }
+            printf("labwork 4 GPU (100 times) ellapsed %.1fms\n", lwNum, timer.getElapsedTimeInMilliSec());
             labwork.saveOutputImage("labwork4-gpu-out.jpg");
             break;
         case 5:
@@ -67,13 +72,19 @@ int main(int argc, char **argv) {
             labwork.labwork5_CPU();
             printf("labwork 5 CPU ellapsed %.1fms\n", lwNum, timer.getElapsedTimeInMilliSec());
             labwork.saveOutputImage("labwork5-cpu-out.jpg");
+
             timer.start();
-            labwork.labwork5_GPU();
-            printf("labwork 5 GPU ellapsed %.1fms\n", lwNum, timer.getElapsedTimeInMilliSec());
+            for (int i = 0; i < 100; ++i) {
+                labwork.labwork5_GPU();
+            }
+            printf("labwork 5 GPU (100 times) ellapsed %.1fms\n", lwNum, timer.getElapsedTimeInMilliSec());
             labwork.saveOutputImage("labwork5-gpu-out.jpg");
+
             timer.start();
-            labwork.labwork5_GPU_optimized();
-            printf("labwork 5 GPU optimized ellapsed %.1fms\n", lwNum, timer.getElapsedTimeInMilliSec());
+            for (int i = 0; i < 100; ++i) {
+                labwork.labwork5_GPU_optimized();
+            }
+            printf("labwork 5 GPU optimized (100 times) ellapsed %.1fms\n", lwNum, timer.getElapsedTimeInMilliSec());
             labwork.saveOutputImage("labwork5-gpu-optimized-out.jpg");
             break;
         case 6:
@@ -81,40 +92,52 @@ int main(int argc, char **argv) {
             param = atoi(argv[4]);
             if (mode == 0) {
                 timer.start();
-                labwork.labwork6a_GPU(param);
-                printf("labwork 6a GPU ellapsed %.1fms\n", lwNum, timer.getElapsedTimeInMilliSec());
+                for (int i = 0; i < 100; ++i) {
+                    labwork.labwork6a_GPU(param);
+                }
+                printf("labwork 6a GPU (100 times) ellapsed %.1fms\n", lwNum, timer.getElapsedTimeInMilliSec());
                 labwork.saveOutputImage("labwork6a-gpu-out.jpg");
             } else if (mode == 1) {
                 timer.start();
-                labwork.labwork6b_GPU(param);
-                printf("labwork 6b GPU ellapsed %.1fms\n", lwNum, timer.getElapsedTimeInMilliSec());
+                for (int i = 0; i < 100; ++i) {
+                    labwork.labwork6b_GPU(param);
+                }
+                printf("labwork 6b GPU (100 times) ellapsed %.1fms\n", lwNum, timer.getElapsedTimeInMilliSec());
                 labwork.saveOutputImage("labwork6b-gpu-out.jpg");
             } else if (mode == 2) {
                 paramFloat = atof(argv[4]);
                 inputFilename2 = std::string(argv[5]);
                 inputImage2 = labwork.loadImage(inputFilename2);
                 timer.start();
-                labwork.labwork6c_GPU(paramFloat, inputImage2);
-                printf("labwork 6c GPU ellapsed %.1fms\n", lwNum, timer.getElapsedTimeInMilliSec());
+                for (int i = 0; i < 100; ++i) {
+                    labwork.labwork6c_GPU(paramFloat, inputImage2);
+                }
+                printf("labwork 6c GPU (100 times) ellapsed %.1fms\n", lwNum, timer.getElapsedTimeInMilliSec());
                 labwork.saveOutputImage("labwork6c-gpu-out.jpg");
             }
             break;
         case 7:
             timer.start();
-            labwork.labwork7_GPU();
-            printf("labwork 7 GPU ellapsed %.1fms\n", lwNum, timer.getElapsedTimeInMilliSec());
+            for (int i = 0; i < 100; ++i) {
+                labwork.labwork7_GPU();
+            }
+            printf("labwork 7 GPU (100 times) ellapsed %.1fms\n", lwNum, timer.getElapsedTimeInMilliSec());
             labwork.saveOutputImage("labwork7-gpu-out.jpg");
             break;
         case 8:
             timer.start();
-            labwork.labwork8_GPU();
-            printf("labwork 8 GPU ellapsed %.1fms\n", lwNum, timer.getElapsedTimeInMilliSec());
+            for (int i = 0; i < 100; ++i) {
+                labwork.labwork8_GPU();
+            }
+            printf("labwork 8 GPU (100 times) ellapsed %.1fms\n", lwNum, timer.getElapsedTimeInMilliSec());
             labwork.saveOutputImage("labwork8-gpu-out.jpg");
             break;
         case 9:
             timer.start();
-            labwork.labwork9_GPU();
-            printf("labwork 9 GPU ellapsed %.1fms\n", lwNum, timer.getElapsedTimeInMilliSec());
+            for (int i = 0; i < 100; ++i) {
+                labwork.labwork9_GPU();
+            }
+            printf("labwork 9 GPU (100 times) ellapsed %.1fms\n", lwNum, timer.getElapsedTimeInMilliSec());
             labwork.saveOutputImage("labwork9-gpu-out.jpg");
             break;
         case 10:
