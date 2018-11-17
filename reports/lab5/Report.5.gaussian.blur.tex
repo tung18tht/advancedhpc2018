@@ -1,0 +1,63 @@
+\documentclass[12pt]{article}
+
+\usepackage[a4paper, margin=1in]{geometry}
+
+\usepackage{listings}
+\usepackage{color}
+\usepackage{array}
+
+\definecolor{codegreen}{rgb}{0,0.6,0}
+\definecolor{codegray}{rgb}{0.5,0.5,0.5}
+\definecolor{codepurple}{rgb}{0.58,0,0.82}
+\definecolor{backcolour}{rgb}{0.95,0.95,0.92}
+
+\lstdefinestyle{mystyle}{
+  backgroundcolor=\color{backcolour},
+  commentstyle=\color{codegreen},
+  keywordstyle=\color{magenta},
+  numberstyle=\tiny\color{codegray},
+  stringstyle=\color{codepurple},
+  basicstyle=\ttfamily,
+  breakatwhitespace=false,
+  breaklines=true,
+  captionpos=b,
+  keepspaces=true,
+  numbers=left,
+  numbersep=5pt,
+  showspaces=false,
+  showstringspaces=false,
+  showtabs=false,
+  tabsize=2
+}
+
+\lstset{style=mystyle}
+
+\setlength\parindent{0pt}
+\setlength\parskip{1em}
+
+\title{Lab 5 - Gaussian blur}
+\author{\textsc{Nguyen} Duc Tung}
+\date{}
+
+\begin{document}
+
+\maketitle
+
+I implement the Gaussian blur on GPU following the sample with 2 versions: without shared memory, and with shared memory
+
+\begin{itemize}
+  \item Without shared memory: each thread stores it's own kernel array
+  \item With shared memory: all threads in 1 block using 1 shared kernel array, the array is initialized using the method introduced on class
+\end{itemize}
+
+Here is the performance comparision:
+
+\begin{itemize}
+  \item CPU version: 1450 ms
+  \item GPU version: 25.2 ms
+  \item GPU version with shared memory: 26.3 ms
+\end{itemize}
+
+Theoretically, shared memory version should have better performance. But as discussed on class, NVIDIA may introduced some better optimization for the array variables on the device.
+
+\end{document}
