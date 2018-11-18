@@ -53,6 +53,8 @@ I get the binarization threshold from the command line, and process each pixel b
 binary = min(greyscale / threshold, 1) * 255;
 \end{lstlisting}
 
+Time elapsed: 21.9 ms
+
 \begin{figure}[H]
   \centering
   \begin{subfigure}{.45\textwidth}
@@ -76,6 +78,8 @@ unsigned char g = min(max(input[globalId * 3 + 1] + brightnessChange, 0), 255);
 unsigned char b = min(max(input[globalId * 3 + 2] + brightnessChange, 0), 255);
 \end{lstlisting}
 
+Time elapsed: 21.8 ms
+
 \begin{figure}[H]
   \centering
   \begin{subfigure}{.45\textwidth}
@@ -94,6 +98,8 @@ unsigned char b = min(max(input[globalId * 3 + 2] + brightnessChange, 0), 255);
 The task get the blending ratio from users, and then compute the average pixel's colors between two images by the ratio.
 \\\\
 Here is the image blended between Effeil image and national flag of France, with ratio = 0.5.
+
+Time elapsed: 26.4 ms
 
 \begin{figure}[H]
   \centering
